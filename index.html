@@ -47,6 +47,8 @@
   #actions .lo { border-color: rgba(255,225,77,0.8); }
   #actions .sup { border-color: rgba(255,140,60,0.8); color: #ffb070; }
   #actions .sup.ready { background: rgba(255,80,40,0.55); border-color: #ffd23f; color: #fff; }
+  #actions .plane-only { display: none; }
+  body.plane #actions .plane-only { display: block; }
 </style>
 </head>
 <body>
@@ -75,10 +77,12 @@
     <button data-key="KeyX" class="hi">CODO</button>
     <button data-key="KeyA" class="hi">PATADA<br>ALTA</button>
     <button data-key="KeyD" class="sup">GRITO</button>
+    <button data-key="Space" class="plane-only">SALTO</button>
+    <button data-key="ControlLeft" class="plane-only">AGACHA</button>
   </div>
 </div>
 
-<script src="game.js?v=7"></script>
+<script src="game.js?v=8"></script>
 <script data-goatcounter="https://demonodojo.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>

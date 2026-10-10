@@ -4,7 +4,8 @@ const W = 320, H = 180, GROUND = 164;
 const GRAV = 0.3, JUMPV = 4.6;
 const ZONE_L = 104, ZONE_R = 216;
 
-const LEVEL_3D = 20;
+const LEVEL_3D = 20, PLANE_LEVEL = 23;
+const Z_MAX = 78, X_PLANE_L = 18, X_PLANE_R = 302;
 
 const cv = document.getElementById('game');
 const glCanvas = document.getElementById('gl');
@@ -183,8 +184,18 @@ const TYPES = {
                hitPts: 40, shield: true, shieldHigh: true, charge: true, summon: 'cop', attacks: ['H', 'HH'] },
   general: { name: 'EL GENERAL', draw: 'officer', boss: true, hp: 34, speed: 0.55, range: 18, wind: 26, pts: 8000,
              hitPts: 60, nazi: true, grenade: true, summon: 'skin', evade: 0.12, attacks: ['HL', 'LH', 'HLH'] },
+  para: { name: 'PARACAIDISTA', draw: 'para', hp: 3, speed: 0.55, range: 15, wind: 26, pts: 400, hitPts: 40,
+          drop: 0.08, chute: true, attacks: ['H', 'L'] },
+  heli: { name: 'HELICOPTERO', draw: 'heli', hp: 10, speed: 0.4, range: 70, wind: 20, pts: 1500, hitPts: 40,
+          drop: 0.12, flying: true, flyY: 22, attacks: ['H'] },
+  plane: { name: 'AVION', draw: 'plane', hp: 12, speed: 1.7, range: 0, wind: 10, pts: 2000, hitPts: 30,
+           drop: 0.15, flying: true, flyY: 46, strafe: true, attacks: ['H'] },
 };
-const UNLOCKS = { 3: '¡LLEGAN LOS CABEZAS RAPADAS!', 5: '¡CUIDADO CON LOS GEO!', 7: '¡OFICIALES NAZIS A LA VISTA!' };
+const UNLOCKS = {
+  3: '¡LLEGAN LOS CABEZAS RAPADAS!', 5: '¡CUIDADO CON LOS GEO!', 7: '¡OFICIALES NAZIS A LA VISTA!',
+  23: '¡A LA CALLE! ABAJO AVANZA, ARRIBA VUELVE',
+  25: '¡PARACAIDISTAS!', 27: '¡HELICOPTEROS!', 30: '¡AVIONES!',
+};
 
 const AFFIX = {
   BLINDADO: { c: '#d0d8e0', hp: 1.8, speed: 0.8 },
@@ -524,10 +535,12 @@ function drawOfficer(e, p, P, poseName) {
   P.px(mx, my - 1, 1, 1, '#f2f2f2');
 }
 
-const DRAWERS = { cop: drawCop, nazi: drawNazi, skin: drawSkin, geo: drawGeo, officer: drawOfficer };
+const DRAWERS = { cop: drawCop, nazi: drawNazi, skin: drawSkin, geo: drawGeo, officer: drawOfficer, para: drawSkin, heli: drawGeo, plane: drawGeo };
 
 function enemyPose(e) {
   switch (e.state) {
+    case 'fall': return 'summon';
+    case 'fly': return 'stand';
     case 'walk': return ['walk1', 'stand', 'walk2', 'stand'][(e.anim >> 3) % 4];
     case 'wind': return e.atkH === 'H' ? 'windH' : 'windL';
     case 'attack': return e.atkH === 'H' ? 'attH' : 'attL';
@@ -577,7 +590,7 @@ function headY(e) { return GROUND - (e.scale > 1 ? 80 : 46); }
 
 function drawTelegraph(e) {
   if (e.elite && e.alive && e.state !== 'tripped') {
-    const p = toScreen(e.x, headY(e) + 8);
+    const p = toScreen(e.x, headY(e) + 8, e.z);
     text(e.elite, p.x, p.y, AFFIX[e.elite].c, 1, 'center', '#000');
   }
   if ((frame >> 2) % 2 === 0) return;
@@ -587,7 +600,7 @@ function drawTelegraph(e) {
   else if (e.state === 'chargeWind') c = '#ffe14d';
   else if (e.state === 'aimThrow') c = '#4fa8ff';
   if (!c) return;
-  const p = toScreen(e.x, headY(e));
+  const p = toScreen(e.x, headY(e), e.z);
   text('!', p.x - 2, p.y, c, 2, 'left', '#000');
 }
 
@@ -606,7 +619,7 @@ function ensure3D() {
   if (r3d || r3dLoading || r3dFailed) return;
   r3dLoading = true;
   loadScript('https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js')
-    .then(() => loadScript('game3d.js?v=6'))
+    .then(() => loadScript('game3d.js?v=7'))
     .then(() => { r3d = window.Render3D.create(glCanvas, { cityC, skyC, W, H }); })
     .catch(() => { r3dFailed = true; })
     .finally(() => { r3dLoading = false; });
@@ -616,12 +629,17 @@ function want3D() {
   return (state === 'play' || state === 'choose' || state === 'over') && level >= LEVEL_3D && !r3dFailed;
 }
 
-function toScreen(x, y) {
-  return use3D() ? r3d.project(x, GROUND - 1 - y) : { x, y };
+function planeOn() {
+  return level >= PLANE_LEVEL && !!r3d && !r3dFailed && state !== 'title';
+}
+function toScreen(x, y, z) {
+  const zz = z == null ? ((mari && mari.z) || 0) : z;
+  return use3D() ? r3d.project(x, GROUND - 1 - y, zz, planeOn()) : { x, y };
 }
 function use3D() { return !!r3d && want3D(); }
 
 function world3D() {
+  const plane = planeOn();
   const characters = [];
   const mp = mariPose(mari);
   const pose = MP[mp] || MP.stand;
@@ -631,20 +649,23 @@ function world3D() {
     visible: !(mari.inv > 0 && !['ko', 'dash', 'super', 'stomp'].includes(mari.state) && (frame >> 2) % 2),
     flags: { fist: !!pose.fist, lying: mp === 'ko', bag: !!pose.bag,
              cane: !!mari.st.stacks.baston && ['stand', 'walk1', 'walk2', 'punch', 'crouch'].includes(mp), canePunch: mp === 'punch' },
+    z: plane ? mari.z : null,
   });
   for (const e of enemies) {
     const ep = enemyPose(e);
     characters.push({
-      obj: e, type: e.T.draw, pose: EP[ep], k: e.scale || 1, dir: e.dir,
+      obj: e, type: e.T.draw, pose: EP[ep] || EP.stand, k: e.scale || 1, dir: e.dir,
       visible: !(e.state === 'ko' && e.t < 30 && (frame >> 1) % 2),
+      z: plane ? e.z : null,
       flags: { fist: ep === 'attH', shoot: ep === 'shoot', shieldUp: shieldUp(e), lying: ep === 'down' || ep === 'fly',
-               bottle: e.state === 'aimThrow' && e.t > 8, gold: !!e.T.boss, saber: !!e.T.boss && ep === 'attH' },
+               bottle: e.state === 'aimThrow' && e.t > 8, gold: !!e.T.boss, saber: !!e.T.boss && ep === 'attH',
+               chute: e.state === 'fall' },
     });
   }
   return {
     characters, projs,
     pickups: pickups.map((p) => Object.assign(p, { visible: !(p.life < 120 && (frame >> 2) % 2) })),
-    focusX: mari.x, shake,
+    focusX: mari.x, focusZ: mari.z || 0, plane, shake,
   };
 }
 
@@ -1100,6 +1121,18 @@ const HINTS_KB = [
   'D: GRITO CUANDO LA BARRA ROJA ESTE LLENA',
   'NAZIS Y ELITES SUELTAN MEDALLAS CON MEJORAS',
 ];
+const HINTS_PLANE_KB = [
+  'ABAJO: A LA CALLE    ARRIBA: AL PORTAL    < > DE LADO',
+  'ESPACIO: SALTAR    CONTROL: AGACHARSE',
+  'LOS CARRILES SON LIBRES: TU Y ELLOS OS MOVEIS POR TODA LA CALLE',
+  'HELICOPTEROS: PATADA ALTA O ZAPATILLA. AVIONES: EL GRITO',
+];
+const HINTS_PLANE_TOUCH = [
+  'ABAJO: A LA CALLE    ARRIBA: AL PORTAL',
+  'SALTO Y AGACHARSE ESTAN EN LOS BOTONES',
+  'LOS CARRILES SON LIBRES: TU Y ELLOS OS MOVEIS POR TODA LA CALLE',
+  'HELICOPTEROS: PATADA ALTA O ZAPATILLA. AVIONES: EL GRITO',
+];
 const HINTS_TOUCH = [
   '¡LOS ESCUDOS PARAN PUÑETAZOS Y RODILLAZOS!',
   '! ROJO: AGACHATE   ! AMARILLO: SALTA   ! AZUL: APARTATE',
@@ -1122,7 +1155,7 @@ function newStats() {
 }
 
 function reset() {
-  mari = { x: 160, y: 0, vy: 0, vx: 0, dir: 1, state: 'idle', t: 0, atk: null, hp: 8, inv: 0,
+  mari = { x: 160, y: 0, z: 0, vy: 0, vx: 0, dir: 1, state: 'idle', t: 0, atk: null, hp: 8, inv: 0,
            anim: 0, buf: null, bufT: 0, hitSet: new Set(), chain: [], rage: 0, dashCD: 0, throwCD: 0,
            tapDir: 0, tapT: -99, usedDouble: false, thrown: false, st: newStats() };
   enemies = []; projs = []; parts = []; popups = []; pickups = []; banners = []; choiceQueue = []; choice = null;
@@ -1157,7 +1190,7 @@ function endGame() {
 }
 
 function showBanner(t) { if (banners.length < 4) banners.push({ text: t, t: 110 }); }
-function popup(x, y, s, c = '#fff') { popups.push({ x, y, s, c, t: 55 }); }
+function popup(x, y, s, c = '#fff') { popups.push({ x, y, s, c, t: 55, z: mari ? mari.z || 0 : 0 }); }
 function mult() { return Math.min(mari.st.multCap, 1 + Math.floor(combo / 4)); }
 function setBpm() { AU.bpm = Math.min(184, 140 + (level - 1) * 3 + (boss ? 12 : 0)); }
 
@@ -1175,21 +1208,22 @@ function addRage(n) {
 
 function spawnTortilla() {
   const tx = rand(ZONE_L + 20, ZONE_R - 20);
-  pickups.push({ kind: 'tortilla', x: 160, h: 70, vx: (tx - 160) / 31, vy: 0, g: 0.15, landed: false, life: 480 });
+  pickups.push({ kind: 'tortilla', x: 160, z: mari.z || 0, h: 70, vx: (tx - 160) / 31, vy: 0, g: 0.15, landed: false, life: 480 });
   vecina.t = 110;
   popup(160, 66, '¡TOMA, HIJA!', '#ffb3d9');
 }
 
-function dropMedal(x, h = 18) {
-  const tx = clamp(x, ZONE_L + 6, ZONE_R - 6);
-  pickups.push({ kind: 'medal', x, h, vx: (tx - x) / 40, vy: 2.6, g: 0.15, landed: false, life: 720 });
+function dropMedal(x, h = 18, z = null) {
+  const tx = clamp(x, planeOn() ? X_PLANE_L : ZONE_L + 6, planeOn() ? X_PLANE_R : ZONE_R - 6);
+  pickups.push({ kind: 'medal', x, z: z == null ? (mari.z || 0) : z, h, vx: (tx - x) / 40, vy: 2.6, g: 0.15, landed: false, life: 720 });
 }
 
 function sparks(x, y, c = '#fff6a0', n = 8) {
-  parts.push({ x, y, vx: 0, vy: 0, g: 0, life: 4, c: '#ffffff', s: 3 });
+  const z = mari ? mari.z || 0 : 0;
+  parts.push({ x, y, z, vx: 0, vy: 0, g: 0, life: 4, c: '#ffffff', s: 3 });
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2, sp = rand(0.8, 2.2);
-    parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: 0.05, life: rand(8, 16) | 0, c, s: 1 });
+    parts.push({ x, y, z, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: 0.05, life: rand(8, 16) | 0, c, s: 1 });
   }
 }
 function dust(x, n = 5) {
@@ -1294,8 +1328,9 @@ function triggerEvades(m, A) {
   for (const e of enemies) {
     if (!e.T.evade || !e.alive || !(e.state === 'walk' || e.state === 'idle')) continue;
     const rel = (e.x - m.x) * m.dir;
-    if (!A.both && (rel < 0 || rel > A.reach + 10)) continue;
-    if (A.both && Math.abs(e.x - m.x) > A.reach + 10) continue;
+    const dz = planeOn() ? (e.z || 0) - m.z : 0;
+    if (!A.both && (rel < 0 || Math.hypot(e.x - m.x, dz) > A.reach + 10)) continue;
+    if (A.both && Math.hypot(e.x - m.x, dz) > A.reach + 10) continue;
     if (Math.random() < e.T.evade) {
       e.state = 'evade'; e.t = 12; e.vx = Math.sign(e.x - m.x) * 2.8;
       popup(e.x, headY(e) + 2, 'ESQUIVA', '#c0c0c0');
@@ -1321,7 +1356,8 @@ function doSuper() {
   const m = mari, big = has('grito2');
   flash = 8; shake = 10; hitstop = 6;
   for (const e of enemies) {
-    if (!hittable(e) || e.x < -10 || e.x > W + 10) continue;
+    if (!hittable(e)) continue;
+    if (planeOn() ? Math.hypot(e.x - m.x, (e.z || 0) - m.z) > 170 : (e.x < -10 || e.x > W + 10)) continue;
     hitEnemy(e, { dmg: big ? 6 : 3, h: 'high', trip: !e.T.boss, key: 'super' }, Math.sign(e.x - m.x) || 1, false);
   }
   for (const p of projs) if (!p.friendly && !p.mine) { p.dead = true; sparks(p.x, GROUND - 1 - p.h, '#ffd23f', 4); }
@@ -1341,7 +1377,8 @@ function stompLand() {
     parts.push({ x: m.x, y: GROUND - 2, vx: d * rand(1, 4), vy: rand(-1.5, -0.3), g: 0.08, life: rand(14, 26) | 0, c: '#d8d2c6', s: 2 });
   }
   for (const e of enemies) {
-    if (!hittable(e) || e.y > 4 || Math.abs(e.x - m.x) > radius) continue;
+    if (!hittable(e) || e.y > 4 || e.T.flying) continue;
+    if ((planeOn() ? Math.hypot(e.x - m.x, (e.z || 0) - m.z) : Math.abs(e.x - m.x)) > radius) continue;
     hitEnemy(e, { dmg: 1.5, h: 'low', trip: !e.T.boss, key: 'stomp' }, Math.sign(e.x - m.x) || 1, false);
   }
 }
@@ -1365,14 +1402,27 @@ function mariPose(m) {
   }
 }
 
+function slideZ(m, mul) {
+  if (!planeOn()) return false;
+  const sp = 0.9 * mul * m.st.speed;
+  let moved = false;
+  if (keys.ArrowDown) { m.z += sp; moved = true; }
+  if (keys.ArrowUp) { m.z -= sp; moved = true; }
+  m.z = clamp(m.z, 0, Z_MAX);
+  return moved;
+}
+
 function updMari() {
   const m = mari, s = m.st;
   if (m.inv > 0) m.inv--;
   if (m.dashCD > 0) m.dashCD--;
   if (m.throwCD > 0) m.throwCD--;
   if (s.curlers && s.curlT > 0) s.curlT--;
-  const L = keys.ArrowLeft, Rt = keys.ArrowRight, D = keys.ArrowDown;
-  const U = pressed.ArrowUp || pressed.Space;
+  const plane = planeOn();
+  const L = keys.ArrowLeft, Rt = keys.ArrowRight;
+  const D = plane ? (keys.ControlLeft || keys.ControlRight) : keys.ArrowDown;
+  const U = plane ? pressed.Space : (pressed.ArrowUp || pressed.Space);
+  const stomp = plane ? (pressed.ControlLeft || pressed.ControlRight) : pressed.ArrowDown;
   let ak = null;
   for (const k in ATK_KEYS) if (pressed[k]) ak = ATK_KEYS[k];
   if (ak) { m.buf = ak; m.bufT = 8; } else if (m.bufT > 0) m.bufT--;
@@ -1420,6 +1470,7 @@ function updMari() {
       if (has('embestida')) {
         for (const e of enemies) {
           if (!hittable(e) || m.hitSet.has(e) || Math.abs(e.x - m.x) > 9) continue;
+          if (plane && Math.abs((e.z || 0) - m.z) > 12) continue;
           m.hitSet.add(e);
           hitEnemy(e, { dmg: 1, h: 'low', trip: !e.T.boss, key: 'dash' }, m.dir, true);
         }
@@ -1440,8 +1491,9 @@ function updMari() {
       m.t += s.atkSpd;
       if (L) m.x -= 0.7 * s.speed;
       if (Rt) m.x += 0.7 * s.speed;
+      slideZ(m, 0.6);
       if (m.t >= A.a0 && m.t <= A.a1) doHit(A);
-      if (pressed.ArrowDown && has('pisoton')) { m.state = 'stomp'; m.vy = -5; m.atk = null; sfx('swing'); break; }
+      if (stomp && has('pisoton')) { m.state = 'stomp'; m.vy = -5; m.atk = null; sfx('swing'); break; }
       if (m.t >= A.dur) { m.state = 'jump'; m.atk = null; }
       break;
     }
@@ -1449,36 +1501,47 @@ function updMari() {
     case 'jump':
       if (L) { m.x -= 0.9 * s.speed; m.dir = -1; }
       if (Rt) { m.x += 0.9 * s.speed; m.dir = 1; }
+      slideZ(m, 0.75);
       if (U && has('doble') && !m.usedDouble) {
         m.usedDouble = true; m.vy = JUMPV * 0.95; sfx('jump');
         for (let i = 0; i < 6; i++) parts.push({ x: m.x + rand(-4, 4), y: GROUND - m.y, vx: rand(-0.5, 0.5), vy: rand(0.2, 0.8), g: 0, life: 12, c: '#ffffff', s: 1 });
         break;
       }
-      if (pressed.ArrowDown && has('pisoton')) { m.state = 'stomp'; m.vy = -5; sfx('swing'); break; }
+      if (stomp && has('pisoton')) { m.state = 'stomp'; m.vy = -5; sfx('swing'); break; }
       if (m.bufT > 0) { m.bufT = 0; m.state = 'jattack'; m.atk = 'jkick'; m.t = 0; m.hitSet = new Set(); sfx('swing'); }
       break;
     default:
       if (m.bufT > 0) { m.bufT = 0; startAttack(m, m.buf); break; }
       if (U) { m.state = 'jump'; m.vy = JUMPV; m.y = 0.01; sfx('jump'); break; }
-      if (D) { m.state = 'crouch'; if (L) m.dir = -1; if (Rt) m.dir = 1; break; }
-      if (L !== Rt) { m.dir = L ? -1 : 1; m.x += m.dir * 1.1 * s.speed; m.state = 'walk'; m.anim++; }
+      if (!plane) {
+        if (D) { m.state = 'crouch'; if (L) m.dir = -1; if (Rt) m.dir = 1; break; }
+        if (L !== Rt) { m.dir = L ? -1 : 1; m.x += m.dir * 1.1 * s.speed; m.state = 'walk'; m.anim++; }
+        else m.state = 'idle';
+        break;
+      }
+      if (L !== Rt) { m.dir = L ? -1 : 1; m.x += m.dir * 1.1 * s.speed; }
+      const zm = slideZ(m, 1);
+      if (D) { m.state = 'crouch'; break; }
+      if (L !== Rt || zm) { m.state = 'walk'; m.anim++; }
       else m.state = 'idle';
   }
 
   if (m.state !== 'dash') {
     for (const e of enemies) {
-      if (!blocksMari(e)) continue;
+      if (!blocksMari(e) || e.T.flying || e.state === 'fall') continue;
+      if (plane && Math.abs((e.z || 0) - m.z) > 10) continue;
       const gap = 10 + (e.scale > 1 ? 7 : 0);
       if (e.x <= m.x && m.x - e.x < gap) m.x = e.x + gap;
       else if (e.x > m.x && e.x - m.x < gap) m.x = e.x - gap;
     }
   }
-  m.x = clamp(m.x, ZONE_L, ZONE_R);
+  m.x = clamp(m.x, plane ? X_PLANE_L : ZONE_L, plane ? X_PLANE_R : ZONE_R);
+  if (plane) m.z = clamp(m.z, 0, Z_MAX);
 }
 
 function throwSlipper() {
   const m = mari;
-  projs.push({ kind: 'slipper', x: m.x + m.dir * 6, h: 11, vx: m.dir * 3.6, friendly: true, mine: true,
+  projs.push({ kind: 'slipper', x: m.x + m.dir * 6, z: m.z || 0, h: 11, vx: m.dir * 3.6, friendly: true, mine: true,
                pierce: has('zapatilla2'), hits: new Set(), t: 0 });
 }
 
@@ -1492,8 +1555,13 @@ function doHit(A) {
   for (const e of enemies) {
     if (!hittable(e) || m.hitSet.has(e)) continue;
     const extra = e.scale > 1 ? 8 : 0;
+    if (e.T.flying && (e.y > 34 || (A.h !== 'high' && !A.both))) continue;
+    if (e.state === 'fall' && e.y > 36) continue;
+    if (e.state === 'fall' && e.y > 16 && A.h !== 'high' && !A.both) continue;
     const rel = (e.x - m.x) * m.dir;
-    const inRange = A.both ? Math.abs(e.x - m.x) <= A.reach + 4 + extra : rel >= -2 && rel <= A.reach + 4 + extra;
+    const dz = planeOn() ? (e.z || 0) - (m.z || 0) : 0;
+    const dist = Math.hypot(rel, dz);
+    const inRange = A.both ? dist <= A.reach + 4 + extra : rel >= -2 && dist <= A.reach + 4 + extra;
     if (!inRange) continue;
     m.hitSet.add(e);
     const dir = A.both ? (Math.sign(e.x - m.x) || m.dir) : m.dir;
@@ -1549,6 +1617,7 @@ function hitEnemy(e, A, dir, melee) {
   }
   if (e.hp <= 0) { killEnemy(e, dir, A); return; }
   sfx('hit');
+  if (e.T.flying || e.state === 'fall') return;
   if (e.T.boss) {
     if (e.state === 'walk' || e.state === 'idle') { e.state = 'hurt'; e.t = 8; e.vx = dir * 0.6; }
     return;
@@ -1562,7 +1631,9 @@ function killEnemy(e, dir, A) {
   const m = mari, T = e.T;
   e.alive = false; e.state = 'dead';
   const launch = A && A.launch;
-  e.vx = dir * (launch ? 4.5 : T.boss ? 1.5 : 2.6); e.vy = launch ? 5 : 3.4; e.y = 0.5; e.dir = -dir;
+  e.vx = dir * (launch ? 4.5 : T.boss ? 1.5 : 2.6); e.dir = -dir;
+  if (T.flying) e.vy = -0.3;
+  else { e.vy = launch ? 5 : 3.4; e.y = 0.5; }
   kills++;
   const pts = T.pts * mult() * (e.elite ? 2 : 1);
   addScore(pts);
@@ -1577,8 +1648,8 @@ function killEnemy(e, dir, A) {
     burst(e.x, GROUND - 40, ['#ffd23f', '#ff6040', '#ffffff'], 60, 4);
     showBanner('¡JEFE DERROTADO!');
     queueChoice('boss');
-    dropMedal(e.x, 50);
-  } else if (Math.random() < (e.elite ? 0.35 : T.drop)) dropMedal(e.x);
+    dropMedal(e.x, 50, e.z);
+  } else if (Math.random() < (e.elite ? 0.35 : T.drop)) dropMedal(e.x, 18, e.z);
   if (boss) {
     if (e === boss) { boss = null; levelUp(); }
     return;
@@ -1595,6 +1666,7 @@ function levelUp() {
   sfx('level');
   queueChoice('level');
   if (UNLOCKS[level]) showBanner(UNLOCKS[level]);
+  if (level === 23) showBanner(touchMode ? 'BOTONES SALTO Y AGACHARSE' : 'ESPACIO SALTA, CONTROL AGACHA');
   if (level % 5 === 0) spawnBoss();
   setBpm();
 }
@@ -1638,14 +1710,25 @@ function dodgeReward() {
 function makeEnemy(type, side, elite) {
   const T = TYPES[type];
   const e = {
-    type, T, x: side < 0 ? -20 : W + 20, y: 0, vx: 0, vy: 0, dir: -side, side, state: 'walk', t: 0,
+    type, T, x: side < 0 ? -20 : W + 20, y: 0, z: 0, vx: 0, vy: 0, dir: -side, side, state: 'walk', t: 0,
     hp: T.hp * (1 + 0.08 * (level - 1)), speed: T.speed + level * 0.022 + Math.random() * 0.08, range: T.range,
     alive: true, anim: (Math.random() * 30) | 0, shootCD: (100 + Math.random() * 120) | 0,
     atkH: 'H', seq: 'H', si: 0, hitChecked: false, blockT: 0, kindShot: 'ball', grenade: false,
-    scale: T.boss ? 2 : 1, elite: elite || null, flash: 0, regenT: 0,
+    scale: T.boss ? 2 : 1, elite: elite || null, flash: 0, regenT: 0, bombT: 30,
     windMul: Math.max(0.55, 1 - level * 0.022), dmg: T.boss ? 2 : level >= 12 ? 2 : 1,
   };
   if (T.boss) e.x = side < 0 ? -30 : W + 30;
+  if (planeOn()) {
+    e.z = rand(6, Z_MAX - 6);
+    if (T.chute) { e.state = 'fall'; e.y = 96; e.x = rand(X_PLANE_L, X_PLANE_R); e.vx = rand(-0.25, 0.25); }
+    else if (T.flying) {
+      e.state = 'fly'; e.y = T.flyY; e.z = rand(10, Z_MAX - 8);
+      e.x = T.strafe ? (Math.random() < 0.5 ? -36 : W + 36) : rand(X_PLANE_L, X_PLANE_R);
+      e.dir = e.x < W / 2 ? 1 : -1;
+    } else if (!T.boss && Math.random() < 0.35) {
+      e.z = Z_MAX; e.x = rand(X_PLANE_L, X_PLANE_R);
+    }
+  }
   if (elite) {
     const A = AFFIX[elite];
     e.hp *= A.hp || 1; e.speed *= A.speed || 1; e.windMul *= A.wind || 1; e.dmg += A.dmg || 0;
@@ -1660,6 +1743,14 @@ function pickType() {
   if (level >= 3) w.push(['skin', 3 + level * 0.3]);
   if (level >= 5) w.push(['geo', 2 + level * 0.3]);
   if (level >= 7) w.push(['officer', 1 + level * 0.2]);
+  if (planeOn()) {
+    const flyN = enemies.filter((e) => e.alive && (e.T.flying || e.state === 'fall')).length;
+    if (flyN < 2) {
+      if (level >= 25) w.push(['para', 2.2]);
+      if (level >= 27) w.push(['heli', 1.3]);
+      if (level >= 30) w.push(['plane', 0.9]);
+    }
+  }
   let r = Math.random() * w.reduce((a, b) => a + b[1], 0);
   for (const [t, v] of w) { if ((r -= v) <= 0) return t; }
   return 'cop';
@@ -1670,8 +1761,10 @@ function spawnEnemy() {
   const rc = enemies.filter((e) => e.alive && e.side > 0).length;
   let side = Math.random() < 0.5 ? -1 : 1;
   if (lc - rc >= 2) side = 1; else if (rc - lc >= 2) side = -1;
-  const elite = level >= 2 && Math.random() < Math.min(0.22, 0.018 * level) ? pick(Object.keys(AFFIX)) : null;
-  makeEnemy(pickType(), side, elite);
+  const type = pickType();
+  const elite = !TYPES[type].flying && !TYPES[type].chute && level >= 2 && Math.random() < Math.min(0.22, 0.018 * level)
+    ? pick(Object.keys(AFFIX)) : null;
+  makeEnemy(type, side, elite);
 }
 
 function spawnBoss() {
@@ -1704,21 +1797,31 @@ function tryRanged(e) {
 function fireShot(e) {
   const k = e.kindShot;
   const spec = { ball: [21, 2.4], gas: [2, 1.5], taser: [14, 3.4] }[k];
-  projs.push({ kind: k, x: e.x + e.dir * 10, h: spec[0], vx: e.dir * spec[1], friendly: false, t: 0, hits: new Set() });
+  projs.push({ kind: k, x: e.x + e.dir * 10, z: e.z || 0, h: spec[0], vx: e.dir * spec[1], friendly: false, t: 0, hits: new Set() });
   smoke(e.x + e.dir * 12, GROUND - 1 - (k === 'gas' ? 6 : spec[0]), 4);
   sfx(k === 'taser' ? 'taser' : 'shoot');
 }
 
 function throwArc(e) {
   const tf = 44, g = 0.22, h0 = 26 * (e.scale || 1);
-  const tx = mari.x + rand(-6, 6);
-  projs.push({ kind: e.grenade ? 'grenade' : 'bottle', arc: true, x: e.x, h: h0, vx: (tx - e.x) / tf,
-               vy: (0.5 * g * tf * tf - h0) / tf, g, t: 0, friendly: false, hits: new Set() });
+  const tx = mari.x + rand(-6, 6), tz = mari.z || 0;
+  projs.push({ kind: e.grenade ? 'grenade' : 'bottle', arc: true, x: e.x, z: e.z || 0, h: h0, vx: (tx - e.x) / tf,
+               vz: ((tz - (e.z || 0)) / tf), vy: (0.5 * g * tf * tf - h0) / tf, g, t: 0, friendly: false, hits: new Set() });
   sfx('swing');
 }
 
+function dropBomb(e) {
+  const tf = 46, g = 0.16, tx = mari.x + rand(-10, 10), tz = (mari.z || 0) + rand(-6, 6);
+  projs.push({ kind: 'grenade', arc: true, x: e.x, z: e.z || 0, h: e.y, vx: (tx - e.x) / tf,
+               vz: (tz - (e.z || 0)) / tf, vy: (0.5 * g * tf * tf - e.y) / tf, g, t: 0, friendly: false, hits: new Set() });
+  sfx('shoot');
+}
+
 function updEnemy(e) {
-  const m = mari, T = e.T, dx = m.x - e.x, dist = Math.abs(dx);
+  if (e.z == null) e.z = 0;
+  const m = mari, T = e.T, dx = m.x - e.x;
+  const dz = planeOn() ? (m.z || 0) - (e.z || 0) : 0;
+  const dist = Math.hypot(dx, dz);
   if (e.blockT > 0) e.blockT--;
   if (e.shootCD > 0) e.shootCD--;
   if (e.flash > 0) e.flash--;
@@ -1734,14 +1837,16 @@ function updEnemy(e) {
     case 'walk': {
       if (dist <= reach) { e.state = 'idle'; e.t = (Math.max(8, rand(25, 60) - level * 3) * furious) | 0; break; }
       let blockedBy = false;
-      if (!T.boss) {
+      if (!T.boss && Math.abs(dx) > 8) {
         for (const o of enemies) {
-          if (o === e || !o.alive || o.side !== e.side) continue;
+          if (o === e || !o.alive || o.T.flying || o.side !== e.side) continue;
+          if (Math.abs((o.z || 0) - (e.z || 0)) > 12) continue;
           const od = (o.x - e.x) * e.dir;
           if (od > 0 && od < 13 + (o.scale > 1 ? 8 : 0)) { blockedBy = true; break; }
         }
       }
-      if (!blockedBy) { e.x += e.dir * e.speed; e.anim++; }
+      if (!blockedBy && Math.abs(dx) > 8) { e.x += e.dir * e.speed; e.anim++; }
+      if (planeOn() && Math.abs(dz) > 3) { e.z += Math.sign(dz) * e.speed * 0.9; e.anim++; }
       if (m.state !== 'ko' && e.x > 6 && e.x < W - 6 && e.shootCD <= 0 && dist > 45 && dist < 150) tryRanged(e);
       break;
     }
@@ -1757,7 +1862,7 @@ function updEnemy(e) {
       e.t--;
       if (!e.hitChecked && e.t <= 9) {
         e.hitChecked = true;
-        if (dist <= reach + 6 && dx * e.dir > -2 && m.state !== 'ko') {
+        if (dist <= reach + 6 && Math.abs(dz) <= 14 && dx * e.dir > -2 && m.state !== 'ko') {
           const avoided = e.atkH === 'H' ? isLow(m) : m.y > 4;
           if (avoided) { if (m.inv <= 0) dodgeReward(); } else hurtMari(e.dir, e.dmg, e);
         }
@@ -1786,7 +1891,8 @@ function updEnemy(e) {
     case 'charge':
       e.x += e.dir * 4.2;
       if (frame % 3 === 0) dust(e.x - e.dir * 10, 1);
-      if (!e.hitChecked && Math.abs(e.x - m.x) < 10) {
+      e.z += clamp(dz, -0.5, 0.5);
+      if (!e.hitChecked && Math.abs(e.x - m.x) < 10 && Math.abs(dz) < 12) {
         e.hitChecked = true;
         if (m.y > 6) dodgeReward(); else if (m.state !== 'ko') hurtMari(e.dir, 2, e);
       }
@@ -1805,6 +1911,22 @@ function updEnemy(e) {
         popup(e.x, headY(e) + 4, '¡REFUERZOS!', '#ff8080');
       }
       if (e.t <= 0) { e.state = 'idle'; e.t = 40; }
+      break;
+    case 'fall':
+      e.y -= 0.5; e.x += e.vx; e.vx *= 0.99;
+      if (e.y <= 0) { e.y = 0; e.vx = 0; e.state = 'idle'; e.t = 18; dust(e.x, 5); sfx('land'); }
+      break;
+    case 'fly':
+      if (T.strafe) {
+        e.x += e.dir * e.speed * 2.1;
+        if (--e.bombT <= 0 && e.x > 20 && e.x < W - 20) { dropBomb(e); e.bombT = 70; }
+        if (e.x < -70 || e.x > W + 70) { e.alive = false; e.remove = true; }
+      } else {
+        e.x += clamp(dx, -1, 1) * e.speed;
+        e.z += clamp(dz, -1, 1) * e.speed * 0.75;
+        e.dir = dx >= 0 ? 1 : -1;
+        if (e.shootCD <= 0 && dist < 110) { dropBomb(e); e.shootCD = 140; }
+      }
       break;
     case 'evade':
       e.x += e.vx; e.vx *= 0.82;
@@ -1827,7 +1949,10 @@ function updEnemy(e) {
       if (--e.t <= 0) e.remove = true;
       break;
   }
-  if (e.alive) e.x = clamp(e.x, -40, W + 40);
+  if (e.alive) {
+    if (!(T.flying && T.strafe)) e.x = clamp(e.x, -40, W + 40);
+    if (planeOn() && !T.strafe) e.z = clamp(e.z, 0, Z_MAX);
+  }
 }
 
 function explode(p) {
@@ -1840,10 +1965,11 @@ function explode(p) {
     burst(p.x, GROUND - 3, ['#2e8b3e', '#9fe0a8', '#e8f8ea'], 16, 2);
     sfx('glass');
   }
-  if (Math.abs(p.x - m.x) < radius && m.y < 8) hurtMari(Math.sign(m.x - p.x) || 1, big ? 2 : 1, null);
+  const boom = (x, z) => planeOn() ? Math.hypot(p.x - x, (p.z || 0) - (z || 0)) : Math.abs(p.x - x);
+  if (boom(m.x, m.z) < radius && m.y < 8) hurtMari(Math.sign(m.x - p.x) || 1, big ? 2 : 1, null);
   if (big) {
     for (const e of enemies) {
-      if (hittable(e) && !e.T.boss && Math.abs(e.x - p.x) < radius) hitEnemy(e, { dmg: 2, h: 'low', trip: true, key: 'boom' }, Math.sign(e.x - p.x) || 1, false);
+      if (hittable(e) && !e.T.boss && e.y < 16 && boom(e.x, e.z) < radius) hitEnemy(e, { dmg: 2, h: 'low', trip: true, key: 'boom' }, Math.sign(e.x - p.x) || 1, false);
     }
   }
 }
@@ -1855,13 +1981,14 @@ function updProjs() {
     p.x += p.vx;
     if (p.arc) {
       p.vy -= p.g; p.h += p.vy;
+      if (p.vz) p.z += p.vz;
       if (p.h <= 0) { p.h = 0; explode(p); p.dead = true; }
       continue;
     }
     if (p.kind === 'gas' && p.t % 3 === 0) smoke(p.x, GROUND - 4);
     if (p.kind === 'taser' && p.t % 2 === 0) parts.push({ x: p.x, y: GROUND - 1 - p.h + rand(-2, 2), vx: 0, vy: 0, g: 0, life: 6, c: '#fff36a', s: 1 });
     if (!p.friendly) {
-      if (Math.abs(p.x - m.x) < 5 && m.state !== 'ko' && m.inv <= 0) {
+      if (Math.abs(p.x - m.x) < 5 && (!planeOn() || Math.abs((p.z || 0) - m.z) < 12) && m.state !== 'ko' && m.inv <= 0) {
         let hit = false;
         if (p.kind === 'ball') hit = !isLow(m) && m.y < 14;
         else if (p.kind === 'gas') hit = m.y < 5;
@@ -1877,6 +2004,8 @@ function updProjs() {
       for (const e of enemies) {
         const extra = e.scale > 1 ? 8 : 0;
         if (!hittable(e) || p.hits.has(e) || Math.abs(e.x - p.x) >= 6 + extra) continue;
+        if (planeOn() && Math.abs((e.z || 0) - (p.z || 0)) > 12) continue;
+        if (e.T.flying && p.kind !== 'slipper') continue;
         if ((e.x - p.x) * Math.sign(p.vx) < -4 - extra) continue;
         p.hits.add(e);
         const dir = Math.sign(p.vx);
@@ -1902,9 +2031,13 @@ function updPickups() {
     if (!p.landed) {
       p.vy -= p.g; p.h += p.vy; p.x += p.vx;
       if (p.h <= 0) { p.h = 0; p.landed = true; dust(p.x, 3); }
-    } else if (p.kind === 'medal' && Math.abs(p.x - m.x) < 60) p.x += Math.sign(m.x - p.x) * 0.6;
+    } else if (p.kind === 'medal' && Math.abs(p.x - m.x) < 60 && (!planeOn() || Math.abs((p.z || 0) - m.z) < 36)) {
+      p.x += Math.sign(m.x - p.x) * 0.6;
+      if (planeOn()) p.z += Math.sign(m.z - (p.z || 0)) * 0.45;
+    }
     p.life--;
-    if (Math.abs(p.x - m.x) < 8 && p.h < 28 && m.state !== 'ko') {
+    const nearZ = !planeOn() || Math.abs((p.z || 0) - m.z) < 10;
+    if (Math.abs(p.x - m.x) < 8 && nearZ && p.h < 28 && m.state !== 'ko') {
       p.dead = true;
       if (p.kind === 'medal') {
         popup(m.x, GROUND - 36, '¡MEDALLA!', '#ffd23f');
@@ -1933,8 +2066,13 @@ function step() {
   if (mari.state === 'ko') {
     if (--goT <= 0) endGame();
   } else if (--spawnT <= 0) {
-    const alive = enemies.filter((e) => e.alive && !e.T.boss).length;
+    const alive = enemies.filter((e) => e.alive && !e.T.boss && !e.T.flying && e.state !== 'fall').length;
+    const flying = enemies.filter((e) => e.alive && (e.T.flying || e.state === 'fall')).length;
     const cap = boss ? 2 : Math.min(2 + level, 8);
+    if (planeOn() && !boss && flying < 2 && level >= 25 && Math.random() < 0.65) {
+      const type = level >= 30 && Math.random() < 0.34 ? 'plane' : level >= 27 && Math.random() < 0.55 ? 'heli' : 'para';
+      makeEnemy(type, Math.random() < 0.5 ? -1 : 1, null);
+    }
     if (alive < cap) spawnEnemy();
     spawnT = (Math.max(45, 170 - level * 10) * rand(0.7, 1.2) * (boss ? 2 : 1)) | 0;
   }
@@ -2022,11 +2160,11 @@ function drawWorld() {
 
 function drawParticlesAndPopups() {
   for (const p of parts) {
-    const s = toScreen(p.x, p.y);
+    const s = toScreen(p.x, p.y, p.z);
     R(ctx, Math.round(s.x - p.s / 2), Math.round(s.y - p.s / 2), p.s, p.s, p.c);
   }
   for (const p of popups) {
-    const s = toScreen(p.x, p.y);
+    const s = toScreen(p.x, p.y, p.z);
     text(p.s, s.x, s.y, p.c, 1, 'center', '#000');
   }
 }
@@ -2058,7 +2196,7 @@ function drawHUD() {
     text(boss.T.name, 160, 29, '#ffd23f', 1, 'center', '#000');
   }
   if (playT < 1500 && mari.state !== 'ko') {
-    const hints = touchMode ? HINTS_TOUCH : HINTS_KB;
+    const hints = planeOn() ? (touchMode ? HINTS_PLANE_TOUCH : HINTS_PLANE_KB) : (touchMode ? HINTS_TOUCH : HINTS_KB);
     text(hints[Math.floor(playT / 300) % hints.length], 160, 174, '#ffffff', 1, 'center', '#000');
   }
 }
@@ -2132,6 +2270,7 @@ const titleNazi = { type: 'nazi', T: TYPES.nazi, x: 216, y: 0, dir: -1, state: '
 
 function render() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  document.body.classList.toggle('plane', planeOn());
   if (want3D()) ensure3D();
   const in3D = use3D();
   glCanvas.style.visibility = in3D ? 'visible' : 'hidden';

@@ -112,6 +112,20 @@ const SPECS = {
       B('arm', -1, -1, 3, 2, 3.6, 4, '#c41e1e'), B('arm', 0, -1, 1, 1, 3.8, 4, '#f2f2f2'),
     ];
   })(),
+  para: (() => {
+    const U = '#4d5a34', UD = '#3a4428', BOOT = '#2a2418', SKIN = '#efc3a0';
+    return [
+      L('hip', 'bk', 3, 3, -2, UD), L('bk', 'bf', 3, 3, -2, BOOT), B('bf', -1, -1, 5, 2, 4, -2, BOOT),
+      L('sh', 'be', 3, 3, -4, UD), L('be', 'bh', 2, 2, -4, UD), B('bh', -1, -1, 2, 2, 2, -4, SKIN),
+      L('hip', 'fk', 3, 3, 2, U), L('fk', 'ff', 3, 3, 2, BOOT), B('ff', -1, -1, 5, 2, 4, 2, BOOT),
+      L('hip', 'sh', 6, 6, 0, U),
+      B('hd', -3, -3, 6, 6, 6, 0, SKIN), B('hd', 1, -1, 1, 1, 6.4, 0, '#111111'),
+      B('hd', -4, -6, 8, 3, 7, 0, '#2c2418'),
+      L('sh', 'fe', 3, 3, 4, U), L('fe', 'fh', 2, 2, 4, U), B('fh', -1, -1, 2, 2, 2, 4, SKIN),
+      B('chute', 0, 0, 18, 2, 12, 0, '#f4f0e4', { when: (f) => f.chute }),
+      B('chute', 7, 0, 4, 2, 12, 0, '#c41e1e', { when: (f) => f.chute }),
+    ];
+  })(),
 };
 
 function create(canvas, opt) {
@@ -163,6 +177,7 @@ function create(canvas, opt) {
     return m;
   };
   const wx = (x) => x - W / 2;
+  const wz = (z) => FACADE_Z + 16 + (z || 0);
 
   // ---------------------------------------------------------- calle
   const BUILDINGS = [
@@ -206,6 +221,11 @@ function create(canvas, opt) {
   box(42, 2, 4, mat('#d6cdbd'), 0, 1, FACADE_Z + 2).receiveShadow = true;
   box(800, 1.4, 2, mat('#d4ccbf'), 0, -0.3, FACADE_Z + 25).receiveShadow = true;
   box(800, 1, 300, mat('#4a4a54'), 0, -1.2, FACADE_Z + 176).receiveShadow = true;
+  const lane = mat('#e7e2d6'), laneY = mat('#e2c14a');
+  for (const [lz, yellow] of [[24, false], [42, true], [60, false], [78, false]]) {
+    const z = wz(lz);
+    for (let i = -8; i <= 8; i++) if (i % 2 === 0) box(16, 0.25, 1.1, yellow ? laneY : lane, i * 36, -0.55, z);
+  }
 
   const lampM = mat('#2e3a33'), lampGlass = new T.MeshBasicMaterial({ color: '#f6e8a6' });
   for (const lx of [70, 250]) {
@@ -242,6 +262,7 @@ function create(canvas, opt) {
     J.arm = [(pose.sh[0] + pose.fe[0]) / 2, (pose.sh[1] + pose.fe[1]) / 2];
     J.caneEnd = flags.canePunch ? [pose.fh[0] + 9, pose.fh[1]] : [pose.fh[0] + 2, 0];
     J.saberEnd = [pose.bh[0] + 11, pose.bh[1] + 1];
+    J.chute = [pose.hd[0] - 8, pose.hd[1] - 16];
     rig.g.position.set(x, h + 1, z);
     rig.g.scale.set(dir * k, k, k);
     for (const { s, m } of rig.parts) {
@@ -265,13 +286,58 @@ function create(canvas, opt) {
     }
   }
 
+  function makeCraft(type) {
+    const g = new T.Group();
+    let rotor = null;
+    if (type === 'heli') {
+      const body = new T.Mesh(unit, mat('#3d4a38'));
+      body.scale.set(16, 7, 8); body.position.set(0, 8, 0); body.castShadow = true; g.add(body);
+      const cabin = new T.Mesh(unit, mat('#8ec8e8', 0.65));
+      cabin.scale.set(7, 4, 7); cabin.position.set(3, 10, 0); g.add(cabin);
+      const tail = new T.Mesh(unit, mat('#2c3528'));
+      tail.scale.set(16, 2.4, 2.4); tail.position.set(-14, 10, 0); g.add(tail);
+      rotor = new T.Mesh(unit, mat('#1a1a1a'));
+      rotor.scale.set(30, 0.7, 2.2); rotor.position.set(2, 14, 0); g.add(rotor);
+      const skid = new T.Mesh(unit, mat('#111111'));
+      skid.scale.set(14, 1, 8); skid.position.set(1, 2, 0); g.add(skid);
+    } else {
+      const body = new T.Mesh(unit, mat('#d5d8dc'));
+      body.scale.set(26, 4, 4); body.position.set(0, 6, 0); body.castShadow = true; g.add(body);
+      const wing = new T.Mesh(unit, mat('#b7bec6'));
+      wing.scale.set(7, 1.2, 28); wing.position.set(2, 6, 0); wing.castShadow = true; g.add(wing);
+      const fin = new T.Mesh(unit, mat('#d5d8dc'));
+      fin.scale.set(6, 5, 1.2); fin.position.set(-12, 9, 0); g.add(fin);
+      const nose = new T.Mesh(unit, mat('#d24a3a'));
+      nose.scale.set(4, 2.4, 2.4); nose.position.set(14, 6, 0); g.add(nose);
+    }
+    scene.add(g);
+    return { g, parts: [], craft: true, rotor };
+  }
+
   function syncCharacter(seen, c) {
+    if (c.type === 'heli' || c.type === 'plane') {
+      let rig = rigs.get(c.obj);
+      if (!rig || !rig.craft) {
+        if (rig) scene.remove(rig.g);
+        rig = makeCraft(c.type); rigs.set(c.obj, rig);
+      }
+      seen.add(c.obj);
+      rig.g.visible = c.visible;
+      rig.g.position.set(wx(c.obj.x), c.obj.y, c.z == null ? 0 : wz(c.z));
+      rig.g.rotation.y = (c.dir || 1) > 0 ? 0 : Math.PI;
+      if (rig.rotor) rig.rotor.rotation.y += 0.9;
+      return;
+    }
     let rig = rigs.get(c.obj);
-    if (!rig) { rig = makeRig(SPECS[c.type] ? c.type : 'cop'); rigs.set(c.obj, rig); }
+    if (!rig || rig.craft) {
+      if (rig) scene.remove(rig.g);
+      rig = makeRig(SPECS[c.type] ? c.type : 'cop'); rigs.set(c.obj, rig);
+    }
     seen.add(c.obj);
     rig.g.visible = c.visible;
     if (!depthOf.has(c.obj)) depthOf.set(c.obj, c.type === 'mari' ? 0 : Math.random() * 8 - 4);
-    poseRig(rig, c.pose, wx(c.obj.x), c.obj.y, depthOf.get(c.obj), c.dir || c.obj.dir, c.k || 1, c.flags);
+    const z = c.z == null ? depthOf.get(c.obj) : wz(c.z);
+    poseRig(rig, c.pose, wx(c.obj.x), c.obj.y, z, c.dir || c.obj.dir, c.k || 1, c.flags);
   }
 
   // ---------------------------------------------------------- objetos
@@ -303,7 +369,7 @@ function create(canvas, opt) {
     for (const p of wd.projs) {
       const look = PROJ[p.kind] || PROJ.ball;
       const m = syncProp(seen, p, () => box(look[0], look[1], look[2], mat(look[3]), 0, 0, 0));
-      m.position.set(wx(p.x), p.h + look[1] / 2, 0);
+      m.position.set(wx(p.x), p.h + look[1] / 2, wd.plane ? wz(p.z || 0) : 0);
       if (look[4]) m.rotation.z = -(p.t || 0) * look[4] * Math.sign(p.vx || 1);
     }
     for (const p of wd.pickups) {
@@ -311,7 +377,7 @@ function create(canvas, opt) {
       const m = syncProp(seen, p, () => (medal
         ? new T.Mesh(medalGeo, new T.MeshBasicMaterial({ color: '#ffd23f' }))
         : new T.Mesh(tortillaGeo, mat('#f2c94c'))));
-      m.position.set(wx(p.x), p.h + (medal ? 4 : 1.5), 0);
+      m.position.set(wx(p.x), p.h + (medal ? 4 : 1.5), wd.plane ? wz(p.z || 0) : 0);
       if (medal) { m.rotation.x = Math.PI / 2; m.rotation.z += 0.08; } else m.rotation.y += 0.05;
       m.visible = p.visible;
     }
@@ -325,14 +391,20 @@ function create(canvas, opt) {
     const sway = Math.sin(now / 5000) * 0.28 * e;
     const shx = wd.shake ? (Math.random() * 2 - 1) * wd.shake : 0;
     const shy = wd.shake ? (Math.random() * 2 - 1) * wd.shake : 0;
-    camera.position.set(tx + Math.sin(sway) * 205 + shx, 58 + 24 * e + shy, Math.cos(sway) * 205);
-    camera.lookAt(tx * 0.8, 56, 0);
+    if (wd.plane) {
+      const fz = wz(wd.focusZ || 0);
+      camera.position.set(tx * 0.35 + shx, 128 + shy, fz + 150);
+      camera.lookAt(tx * 0.7, 14, fz - 40);
+    } else {
+      camera.position.set(tx + Math.sin(sway) * 205 + shx, 58 + 24 * e + shy, Math.cos(sway) * 205);
+      camera.lookAt(tx * 0.8, 56, 0);
+    }
     renderer.render(scene, camera);
   }
 
   const v = new T.Vector3();
-  function project(x, h) {
-    v.set(wx(x), h + 1, 0).project(camera);
+  function project(x, h, z, plane) {
+    v.set(wx(x), h + 1, plane ? wz(z || 0) : 0).project(camera);
     return { x: ((v.x + 1) / 2) * W, y: ((1 - v.y) / 2) * H };
   }
 
