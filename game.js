@@ -4,7 +4,7 @@ const W = 320, H = 180, GROUND = 164;
 const GRAV = 0.3, JUMPV = 4.6;
 const MAX_HP = 8;
 
-const LEVEL_3D = 1;
+const LEVEL_3D = 20;
 
 const cv = document.getElementById('game');
 const glCanvas = document.getElementById('gl');
