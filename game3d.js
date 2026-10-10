@@ -25,6 +25,53 @@ const SPECS = {
       B('hd', -4, -5, 7, 2, 7, 0, HR), B('hd', -3, -6, 5, 1, 5, 0, HR), B('hd', -4, -3, 2, 5, 7, 0, HR),
       B('hd', 0, -2, 3, 1, 6.6, 0, '#4a4a4a'), B('hd', 1, -1, 1, 1, 6.4, 0, '#222222'),
       B('hd', 1, 1, 2, 1, 6.2, 0, '#a85a50'),
+      B('fh', -2, 0, 5, 5, 3, 4, '#7a3b2b', { when: (f) => f.bag }),
+      L('fh', 'caneEnd', 1, 1, 4, '#6b4a2a', { when: (f) => f.cane }),
+    ];
+  })(),
+  skin: (() => {
+    const JK = '#3f4a2c', JKD = '#2f3820', JE = '#3b4f86', JED = '#2d3c66', BOOT = '#5a1414';
+    const SKIN = '#f0c09a', SKD = '#d0a07a';
+    return [
+      L('hip', 'bk', 3, 3, -2, JED), L('bk', 'bf', 3, 3, -2, JED), B('bf', -1, -2, 5, 3, 4, -2, BOOT),
+      L('sh', 'be', 3, 3, -4, JKD), L('be', 'bh', 2, 2, -4, JKD), B('bh', -1, -1, 2, 2, 2, -4, SKD, { fist: true }),
+      B('bh', -1, -6, 2, 5, 2, -4, '#2e8b3e', { when: (f) => f.bottle }),
+      L('hip', 'fk', 3, 3, 2, JE), L('fk', 'ff', 3, 3, 2, JE), B('ff', -1, -2, 5, 3, 4, 2, BOOT),
+      L('hip', 'sh', 6, 6, 0, JK),
+      B('hd', -3, -3, 6, 6, 6, 0, SKIN), B('hd', -2, -4, 5, 1, 5, 0, SKIN), B('hd', 3, 0, 1, 1, 1.5, 0, SKIN),
+      B('hd', 1, -1, 1, 1, 6.4, 0, '#111111'), B('hd', 1, 1, 2, 1, 6.2, 0, '#8a3030'),
+      L('sh', 'fe', 3, 3, 4, JK), L('fe', 'fh', 2, 2, 4, JK), B('fh', -1, -1, 2, 2, 2, 4, SKIN),
+    ];
+  })(),
+  geo: (() => {
+    const BK = '#1d1f24', BKD = '#121317', VEST = '#3a3f46', BOOT = '#050505', HEL = '#0c0d10', SKIN = '#d9a882';
+    return [
+      L('hip', 'bk', 3, 3, -2, BKD), L('bk', 'bf', 3, 3, -2, BKD), B('bf', -1, -1, 5, 2, 4, -2, BOOT),
+      L('sh', 'be', 3, 3, -4, BKD), L('be', 'bh', 2, 2, -4, BKD), B('bh', -1, -1, 2, 2, 2, -4, '#000000'),
+      L('hip', 'fk', 3, 3, 2, BK), L('fk', 'ff', 3, 3, 2, BK), B('ff', -1, -1, 5, 2, 4, 2, BOOT),
+      L('hip', 'sh', 6, 6, 0, BK), B('sh', -3, 0, 6, 8, 7, 0, VEST),
+      B('hd', -3, -3, 6, 6, 6, 0, BK), B('hd', 0, -1, 3, 1, 6.4, 0, SKIN),
+      B('hd', -4, -5, 8, 3, 7.4, 0, HEL), B('hd', 0, -4, 4, 1, 7.6, 0, '#5a6a7a'),
+      L('sh', 'fe', 3, 3, 4, BK), L('fe', 'fh', 2, 2, 4, BK), B('fh', -1, -1, 2, 2, 2, 4, '#000000'),
+      B('fh', -1, -1, 6, 2, 2, 4, '#e8d020', { when: (f) => f.shoot }),
+    ];
+  })(),
+  officer: (() => {
+    const C = '#1d1d21', CD = '#121215', BOOT = '#050505', SKIN = '#eec3a2', SKD = '#cc9f80', GOLD = '#e2b443';
+    return [
+      L('hip', 'bk', 3, 3, -2, CD), L('bk', 'bf', 3, 3, -2, BOOT), B('bf', -1, -1, 5, 2, 4, -2, BOOT),
+      L('sh', 'be', 3, 3, -4, CD), L('be', 'bh', 2, 2, -4, CD), B('bh', -1, -1, 2, 2, 2, -4, '#111111', { fist: true }),
+      L('bh', 'saberEnd', 1, 1, -4, '#dcdce4', { when: (f) => f.saber }),
+      L('hip', 'fk', 3, 3, 2, C), L('fk', 'ff', 3, 3, 2, BOOT), B('ff', -1, -1, 5, 2, 4, 2, BOOT),
+      L('hip', 'sh', 6, 6, 0, C), B('hip', -4, -1, 9, 7, 7, 0, C), B('hip', -3, -2, 6, 1, 6.6, 0, '#3a2a1a'),
+      B('sh', -2, -2, 5, 1, 6.8, 0, GOLD, { when: (f) => f.gold }),
+      B('sh', -1, 3, 2, 2, 6.8, 0, '#c41e1e', { when: (f) => f.gold }),
+      B('hd', -3, -3, 6, 6, 6, 0, SKIN), B('hd', 3, 0, 1, 1, 1.5, 0, SKIN), B('hd', -2, -1, 1, 2, 6.2, 0, SKD),
+      B('hd', 1, -1, 1, 1, 6.4, 0, '#111111'),
+      B('hd', -4, -6, 8, 3, 7, 0, C), B('hd', -4, -7, 9, 1, 7.4, 0, C), B('hd', 1, -4, 5, 1, 7.4, 0, '#111111'),
+      B('hd', 0, -6, 2, 1, 7.6, 0, '#c0c0c0'),
+      L('sh', 'fe', 3, 3, 4, C), L('fe', 'fh', 2, 2, 4, C), B('fh', -1, -1, 2, 2, 2, 4, SKIN),
+      B('arm', -1, -1, 3, 2, 3.6, 4, '#c41e1e'),
     ];
   })(),
   cop: (() => {
@@ -40,6 +87,8 @@ const SPECS = {
       B('hd', -4, -5, 8, 6, 8, 0, HEL), B('hd', -3, -6, 6, 1, 7, 0, HEL), B('hd', -4, 1, 3, 2, 7, 0, HEL),
       B('hd', 0, 1, 3, 2, 6, 0, SKIN),
       B('hd', 1, -2, 4, 4, 8.4, 0, '#8cc8eb', { opacity: 0.7 }),
+      B('hd', -4, -6, 8, 1, 8.6, 0, '#e2b443', { when: (f) => f.gold }),
+      B('sh', -2, -3, 5, 1, 7, 0, '#e2b443', { when: (f) => f.gold }),
       L('sh', 'fe', 3, 3, 4, J), L('fe', 'fh', 2, 2, 4, J), B('fh', -1, -1, 2, 2, 2, 4, '#111111'),
       B('fh', -3, -1, 9, 2, 2, 4, '#333333', { when: (f) => f.shoot }),
       B('fh', 5, -2, 3, 3, 2.4, 4, '#555555', { when: (f) => f.shoot }),
@@ -67,11 +116,9 @@ const SPECS = {
 
 function create(canvas, opt) {
   const { cityC, skyC, W, H } = opt;
-  const renderer = new T.WebGLRenderer({ canvas, antialias: false });
-  renderer.setPixelRatio(1);
-  renderer.setSize(480, 270, false);
+  const renderer = new T.WebGLRenderer({ canvas, antialias: true });
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = T.BasicShadowMap;
+  renderer.shadowMap.type = T.PCFSoftShadowMap;
 
   const scene = new T.Scene();
   const camera = new T.PerspectiveCamera(40, 16 / 9, 1, 2000);
@@ -94,6 +141,8 @@ function create(canvas, opt) {
   sun.position.set(-120, 220, 160);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.bias = -0.0002;
+  sun.shadow.normalBias = 0.02;
   Object.assign(sun.shadow.camera, { left: -260, right: 260, top: 200, bottom: -80, near: 10, far: 700 });
   sun.shadow.camera.updateProjectionMatrix();
   scene.add(sun, sun.target);
@@ -185,28 +234,32 @@ function create(canvas, opt) {
     return { g, parts };
   }
 
-  function poseRig(rig, pose, x, h, z, dir, flags) {
+  function poseRig(rig, pose, x, h, z, dir, k, flags) {
     const J = Object.assign({}, pose);
     if (pose.bt) J.btEnd = [pose.bh[0] + pose.bt[0], pose.bh[1] + pose.bt[1]];
     J.shUp = [pose.fh[0] + 1, -29];
     J.shDown = [-6, -16];
     J.arm = [(pose.sh[0] + pose.fe[0]) / 2, (pose.sh[1] + pose.fe[1]) / 2];
+    J.caneEnd = flags.canePunch ? [pose.fh[0] + 9, pose.fh[1]] : [pose.fh[0] + 2, 0];
+    J.saberEnd = [pose.bh[0] + 11, pose.bh[1] + 1];
+    rig.g.position.set(x, h + 1, z);
+    rig.g.scale.set(dir * k, k, k);
     for (const { s, m } of rig.parts) {
       const show = !(s.o && s.o.when) || s.o.when(flags);
       m.visible = show;
       if (!show) continue;
       if (s.k === 'L') {
         const a = J[s.a], b = J[s.b];
-        const dx = (b[0] - a[0]) * dir, dy = -(b[1] - a[1]);
+        const dx = b[0] - a[0], dy = -(b[1] - a[1]);
         m.scale.set(s.t, Math.hypot(dx, dy) + s.t, s.d);
-        m.position.set(x + ((a[0] + b[0]) / 2) * dir, h + 1 - (a[1] + b[1]) / 2, z + s.z);
+        m.position.set((a[0] + b[0]) / 2, -(a[1] + b[1]) / 2, s.z);
         m.rotation.set(0, 0, Math.atan2(-dx, dy));
       } else {
         const a = J[s.a];
         const big = s.o && s.o.fist && flags.fist;
         const w = big ? 3 : s.w, hh = big ? 3 : s.h, d = big ? 3 : s.d;
         m.scale.set(w, hh, d);
-        m.position.set(x + (a[0] + s.ox + w / 2) * dir, h + 1 - (a[1] + s.oy + hh / 2), z + s.z);
+        m.position.set(a[0] + s.ox + w / 2, -(a[1] + s.oy + hh / 2), s.z);
         m.rotation.set(0, 0, 0);
       }
     }
@@ -214,16 +267,25 @@ function create(canvas, opt) {
 
   function syncCharacter(seen, c) {
     let rig = rigs.get(c.obj);
-    if (!rig) { rig = makeRig(c.type); rigs.set(c.obj, rig); }
+    if (!rig) { rig = makeRig(SPECS[c.type] ? c.type : 'cop'); rigs.set(c.obj, rig); }
     seen.add(c.obj);
     rig.g.visible = c.visible;
     if (!depthOf.has(c.obj)) depthOf.set(c.obj, c.type === 'mari' ? 0 : Math.random() * 8 - 4);
-    poseRig(rig, c.pose, wx(c.obj.x), c.obj.y, depthOf.get(c.obj), c.obj.dir, c.flags);
+    poseRig(rig, c.pose, wx(c.obj.x), c.obj.y, depthOf.get(c.obj), c.dir || c.obj.dir, c.k || 1, c.flags);
   }
 
   // ---------------------------------------------------------- objetos
   const props = new Map();
   const tortillaGeo = new T.CylinderGeometry(4, 4, 2.5, 10);
+  const medalGeo = new T.CylinderGeometry(3.5, 3.5, 1, 10);
+  const PROJ = {
+    ball: [3, 3, 3, '#2a2a2a', 0],
+    gas: [5, 4, 4, '#6b7350', 0.2],
+    taser: [6, 2, 2, '#fff36a', 0],
+    bottle: [2, 5, 2, '#2e8b3e', 0.25],
+    grenade: [4, 4, 4, '#3c4a2c', 0.15],
+    slipper: [6, 2, 3, '#c0392b', 0.4],
+  };
   function syncProp(seen, obj, make) {
     let m = props.get(obj);
     if (!m) { m = make(); m.castShadow = true; scene.add(m); props.set(obj, m); }
@@ -239,17 +301,18 @@ function create(canvas, opt) {
     const seen = new Set();
     for (const c of wd.characters) syncCharacter(seen, c);
     for (const p of wd.projs) {
-      const ball = p.kind === 'ball';
-      const m = syncProp(seen, p, () => (ball
-        ? box(3, 3, 3, mat('#2a2a2a'), 0, 0, 0)
-        : box(5, 4, 4, mat('#6b7350'), 0, 0, 0)));
-      m.position.set(wx(p.x), p.h + (ball ? 0.5 : 2), 0);
-      if (!ball) m.rotation.z = -p.t * 0.2 * Math.sign(p.vx);
+      const look = PROJ[p.kind] || PROJ.ball;
+      const m = syncProp(seen, p, () => box(look[0], look[1], look[2], mat(look[3]), 0, 0, 0));
+      m.position.set(wx(p.x), p.h + look[1] / 2, 0);
+      if (look[4]) m.rotation.z = -(p.t || 0) * look[4] * Math.sign(p.vx || 1);
     }
     for (const p of wd.pickups) {
-      const m = syncProp(seen, p, () => new T.Mesh(tortillaGeo, mat('#f2c94c')));
-      m.position.set(wx(p.x), p.h + 1.5, 0);
-      m.rotation.y += 0.05;
+      const medal = p.kind === 'medal';
+      const m = syncProp(seen, p, () => (medal
+        ? new T.Mesh(medalGeo, new T.MeshBasicMaterial({ color: '#ffd23f' }))
+        : new T.Mesh(tortillaGeo, mat('#f2c94c'))));
+      m.position.set(wx(p.x), p.h + (medal ? 4 : 1.5), 0);
+      if (medal) { m.rotation.x = Math.PI / 2; m.rotation.z += 0.08; } else m.rotation.y += 0.05;
       m.visible = p.visible;
     }
     for (const [obj, rig] of rigs) if (!seen.has(obj)) { scene.remove(rig.g); rigs.delete(obj); }
@@ -273,7 +336,12 @@ function create(canvas, opt) {
     return { x: ((v.x + 1) / 2) * W, y: ((1 - v.y) / 2) * H };
   }
 
-  return { render, project, intro };
+  function resize(w, h) {
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(w, h, false);
+  }
+
+  return { render, project, intro, resize };
 }
 
 window.Render3D = { create };
