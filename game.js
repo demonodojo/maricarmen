@@ -9,11 +9,15 @@ const ctx = cv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 function fit() {
-  const s = Math.max(1, Math.floor(Math.min(innerWidth / W, innerHeight / H)));
-  cv.style.width = W * s + 'px';
-  cv.style.height = H * s + 'px';
+  let s = Math.min(innerWidth / W, innerHeight / H);
+  if (s >= 3) s = Math.floor(s);
+  cv.style.width = Math.floor(W * s) + 'px';
+  cv.style.height = Math.floor(H * s) + 'px';
 }
 addEventListener('resize', fit);
+addEventListener('orientationchange', () => setTimeout(fit, 200));
+document.addEventListener('fullscreenchange', fit);
+document.addEventListener('webkitfullscreenchange', fit);
 fit();
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -639,9 +643,85 @@ addEventListener('keydown', (e) => {
   if (!keys[e.code]) pressed[e.code] = true;
   keys[e.code] = true;
   initAudio();
+  if (e.code === 'KeyF' && !e.repeat) toggleFullscreen();
 });
 addEventListener('keyup', (e) => { keys[e.code] = false; });
 cv.addEventListener('pointerdown', () => { initAudio(); pressed.Enter = true; });
+addEventListener('touchend', initAudio);
+
+// ---------------------------------------------------------------- MÓVIL Y PANTALLA COMPLETA
+let touchMode = false;
+function setTouchMode() {
+  if (touchMode) return;
+  touchMode = true;
+  document.body.classList.add('touch');
+}
+if (matchMedia('(pointer: coarse)').matches) setTouchMode();
+addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') setTouchMode(); }, true);
+addEventListener('contextmenu', (e) => e.preventDefault());
+
+const touchUI = document.getElementById('touch');
+const keyButtons = [...document.querySelectorAll('#touch [data-key]')];
+const ptrKey = new Map();
+
+function refreshButtons() {
+  for (const b of keyButtons) b.classList.toggle('on', !!keys[b.dataset.key]);
+}
+function releaseCode(code) {
+  keys[code] = [...ptrKey.values()].includes(code);
+}
+function ptrUpdate(e) {
+  const prev = ptrKey.get(e.pointerId) || null;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const btn = el && el.closest('#touch [data-key]');
+  const code = btn ? btn.dataset.key : null;
+  if (code === prev) return;
+  if (code) {
+    ptrKey.set(e.pointerId, code);
+    if (!keys[code]) pressed[code] = true;
+    keys[code] = true;
+  } else ptrKey.delete(e.pointerId);
+  if (prev) releaseCode(prev);
+  refreshButtons();
+}
+function ptrEnd(e) {
+  const prev = ptrKey.get(e.pointerId);
+  ptrKey.delete(e.pointerId);
+  if (prev) releaseCode(prev);
+  refreshButtons();
+}
+touchUI.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  initAudio();
+  if (state !== 'play') pressed.Enter = true;
+  ptrUpdate(e);
+});
+touchUI.addEventListener('pointermove', (e) => { if (ptrKey.has(e.pointerId)) ptrUpdate(e); });
+touchUI.addEventListener('pointerup', ptrEnd);
+touchUI.addEventListener('pointercancel', ptrEnd);
+
+const tapButton = (id, fn) => document.getElementById(id).addEventListener('pointerdown', (e) => {
+  e.preventDefault(); e.stopPropagation(); initAudio(); fn();
+});
+tapButton('btn-music', () => { pressed.KeyM = true; });
+tapButton('btn-pause', () => { pressed.KeyP = true; });
+tapButton('btn-fs', () => toggleFullscreen());
+
+function isFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function toggleFullscreen() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) { showBanner('AÑADELO A LA PANTALLA DE INICIO'); return; }
+  if (isFullscreen()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+  const lock = () => {
+    try {
+      const p = screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape');
+      if (p && p.catch) p.catch(() => {});
+    } catch (err) { /* el navegador no permite bloquear la orientación */ }
+  };
+  const r = req.call(el, { navigationUI: 'hide' });
+  if (r && r.then) r.then(lock).catch(() => {}); else lock();
+}
 
 const ATK = {
   punch: { dur: 16, a0: 4, a1: 8, reach: 17, h: 'mid', dmg: 1, pose: 'punch' },
@@ -1129,13 +1209,19 @@ function drawTitle() {
   R(ctx, 26, 18, 268, 1, '#ffd23f'); R(ctx, 26, 117, 268, 1, '#ffd23f');
   text('MARICARMEN', 160, 23, '#ffd23f', 3, 'center', '#a32020');
   text('LA DEFENSA DEL PORTAL', 160, 43, '#ffffff', 1, 'center');
-  text('< > MOVERSE    ARRIBA SALTAR    ABAJO AGACHARSE', 160, 54, '#9fd3ff', 1, 'center');
-  text('Z PUÑETAZO   X CODAZO   C RODILLAZO', 160, 62, '#9fd3ff', 1, 'center');
-  text('A PATADA ALTA   S PATADA BAJA', 160, 70, '#9fd3ff', 1, 'center');
+  if (touchMode) {
+    text('CRUCETA: MOVERSE, ARRIBA SALTA, ABAJO AGACHA', 160, 54, '#9fd3ff', 1, 'center');
+    text('BOTONES: PUÑO, CODO, RODILLA,', 160, 62, '#9fd3ff', 1, 'center');
+    text('PATADA ALTA Y PATADA BAJA', 160, 70, '#9fd3ff', 1, 'center');
+  } else {
+    text('< > MOVERSE    ARRIBA SALTAR    ABAJO AGACHARSE', 160, 54, '#9fd3ff', 1, 'center');
+    text('Z PUÑETAZO   X CODAZO   C RODILLAZO', 160, 62, '#9fd3ff', 1, 'center');
+    text('A PATADA ALTA   S PATADA BAJA', 160, 70, '#9fd3ff', 1, 'center');
+  }
   text('! ROJO: AGACHATE      ! AMARILLO: SALTA', 160, 80, '#ffb070', 1, 'center');
   text('ANTIDISTURBIO 100 PTS     NAZI 500 PTS', 160, 90, '#ff8080', 1, 'center');
-  text('M MUSICA   P PAUSA', 160, 99, '#9a9aa6', 1, 'center');
-  if ((frame >> 5) % 2 === 0) text('PULSA ENTER', 160, 108, '#ffffff', 1, 'center', '#000');
+  text(touchMode ? 'ARRIBA: MUSICA, PAUSA Y PANTALLA COMPLETA' : 'M MUSICA   P PAUSA   F PANTALLA COMPLETA', 160, 99, '#9a9aa6', 1, 'center');
+  if ((frame >> 5) % 2 === 0) text(touchMode ? 'TOCA PARA EMPEZAR' : 'PULSA ENTER', 160, 108, '#ffffff', 1, 'center', '#000');
   text('RECORD ' + String(hi).padStart(6, '0'), 160, 3, '#ffffff', 1, 'center', '#000');
 }
 
@@ -1175,7 +1261,7 @@ function render() {
     text('PUNTOS ' + score, 160, 78, '#ffffff', 1, 'center');
     text('RECORD ' + hi, 160, 87, '#ffd23f', 1, 'center');
     text('ENEMIGOS ' + kills + '   NIVEL ' + level, 160, 96, '#9fd3ff', 1, 'center');
-    if (overT > 60 && (frame >> 5) % 2 === 0) text('PULSA ENTER', 160, 108, '#ffffff', 1, 'center');
+    if (overT > 60 && (frame >> 5) % 2 === 0) text(touchMode ? 'TOCA PARA JUGAR OTRA VEZ' : 'PULSA ENTER', 160, 108, '#ffffff', 1, 'center');
   }
 }
 
