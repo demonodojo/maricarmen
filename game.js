@@ -656,7 +656,7 @@ function setTouchMode() {
   touchMode = true;
   document.body.classList.add('touch');
 }
-if (matchMedia('(pointer: coarse)').matches) setTouchMode();
+if (matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || 'ontouchstart' in window) setTouchMode();
 addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') setTouchMode(); }, true);
 addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -705,7 +705,9 @@ const tapButton = (id, fn) => document.getElementById(id).addEventListener('poin
 });
 tapButton('btn-music', () => { pressed.KeyM = true; });
 tapButton('btn-pause', () => { pressed.KeyP = true; });
-tapButton('btn-fs', () => toggleFullscreen());
+document.getElementById('btn-fs').addEventListener('click', (e) => {
+  e.stopPropagation(); initAudio(); toggleFullscreen();
+});
 
 function isFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
 function toggleFullscreen() {
