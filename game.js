@@ -4,15 +4,19 @@ const W = 320, H = 180, GROUND = 164;
 const GRAV = 0.3, JUMPV = 4.6;
 const MAX_HP = 8;
 
+const LEVEL_3D = 1;
+
 const cv = document.getElementById('game');
+const glCanvas = document.getElementById('gl');
+const screenEl = document.getElementById('screen');
 const ctx = cv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 function fit() {
   let s = Math.min(innerWidth / W, innerHeight / H);
   if (s >= 3) s = Math.floor(s);
-  cv.style.width = Math.floor(W * s) + 'px';
-  cv.style.height = Math.floor(H * s) + 'px';
+  screenEl.style.width = Math.floor(W * s) + 'px';
+  screenEl.style.height = Math.floor(H * s) + 'px';
 }
 addEventListener('resize', fit);
 addEventListener('orientationchange', () => setTimeout(fit, 200));
@@ -321,7 +325,63 @@ function drawTelegraph(e) {
   let c = null;
   if (e.state === 'wind') c = e.atkH === 'H' ? '#ff3b3b' : '#ffe14d';
   else if (e.state === 'aimShoot') c = e.kindShot === 'ball' ? '#ff3b3b' : '#ffe14d';
-  if (c) text('!', e.x - 2, GROUND - 46, c, 2, 'left', '#000');
+  if (!c) return;
+  const p = toScreen(e.x, GROUND - 46);
+  text('!', p.x - 2, p.y, c, 2, 'left', '#000');
+}
+
+// ---------------------------------------------------------------- MODO 3D
+let r3d = null, r3dLoading = false, r3dFailed = false, r3dShown = false;
+
+function loadScript(src) {
+  return new Promise((ok, ko) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = ok; s.onerror = ko;
+    document.head.appendChild(s);
+  });
+}
+
+function ensure3D() {
+  if (r3d || r3dLoading || r3dFailed) return;
+  r3dLoading = true;
+  loadScript('https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js')
+    .then(() => loadScript('game3d.js?v=4'))
+    .then(() => { r3d = window.Render3D.create(glCanvas, { cityC, skyC, W, H }); })
+    .catch(() => { r3dFailed = true; })
+    .finally(() => { r3dLoading = false; });
+}
+
+function want3D() {
+  return (state === 'play' || state === 'over') && level >= LEVEL_3D && !r3dFailed;
+}
+
+function toScreen(x, y) {
+  return use3D() ? r3d.project(x, GROUND - 1 - y) : { x, y };
+}
+function use3D() { return !!r3d && want3D(); }
+
+function world3D() {
+  const characters = [];
+  const mp = mariPose(mari);
+  characters.push({
+    obj: mari, type: 'mari', pose: MP[mp] || MP.stand,
+    visible: !(mari.inv > 0 && mari.state !== 'ko' && (frame >> 2) % 2),
+    flags: { fist: !!(MP[mp] || {}).fist, lying: mp === 'ko' },
+  });
+  for (const e of enemies) {
+    const ep = enemyPose(e);
+    characters.push({
+      obj: e, type: e.type, pose: EP[ep],
+      visible: !(e.state === 'ko' && e.t < 30 && (frame >> 1) % 2),
+      flags: { fist: e.type === 'nazi' && ep === 'attH', shoot: ep === 'shoot', shieldUp: copShieldUp(e),
+               lying: ep === 'down' || ep === 'fly' },
+    });
+  }
+  return {
+    characters, projs,
+    pickups: pickups.map((p) => Object.assign(p, { visible: !(p.life < 120 && (frame >> 2) % 2) })),
+    focusX: mari.x, shake,
+  };
 }
 
 // ---------------------------------------------------------------- ESCENARIO
@@ -756,6 +816,7 @@ function reset() {
   vecina = { t: 0 };
   score = 0; level = 1; kills = 0; combo = 0; comboT = 0; shake = 0; hitstop = 0;
   spawnT = 90; nextPickupAt = 3000; goT = 0; playT = 0;
+  r3dShown = false;
   AU.bpm = 140;
 }
 reset();
@@ -1188,8 +1249,14 @@ function drawWorld() {
 }
 
 function drawParticlesAndPopups() {
-  for (const p of parts) R(ctx, Math.round(p.x - p.s / 2), Math.round(p.y - p.s / 2), p.s, p.s, p.c);
-  for (const p of popups) text(p.s, p.x, p.y, p.c, 1, 'center', '#000');
+  for (const p of parts) {
+    const s = toScreen(p.x, p.y);
+    R(ctx, Math.round(s.x - p.s / 2), Math.round(s.y - p.s / 2), p.s, p.s, p.c);
+  }
+  for (const p of popups) {
+    const s = toScreen(p.x, p.y);
+    text(p.s, s.x, s.y, p.c, 1, 'center', '#000');
+  }
 }
 
 function drawHUD() {
@@ -1232,6 +1299,18 @@ const titleNazi = { type: 'nazi', x: 216, y: 0, dir: -1, state: 'idle', t: 99 };
 
 function render() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (want3D()) ensure3D();
+  const in3D = use3D();
+  glCanvas.style.visibility = in3D ? 'visible' : 'hidden';
+  if (in3D) {
+    if (!r3dShown) { r3dShown = true; r3d.intro(); showBanner('¡MODO 3D!'); }
+    ctx.clearRect(0, 0, W, H);
+    r3d.render(world3D());
+    for (const e of enemies) drawTelegraph(e);
+    drawParticlesAndPopups();
+    drawOverlays();
+    return;
+  }
   ctx.drawImage(skyC, 0, 0);
   for (const c of clouds) drawCloud(c.x, c.y);
   let sx = 0, sy = 0;
@@ -1248,7 +1327,10 @@ function render() {
   }
   drawParticlesAndPopups();
   ctx.restore();
+  drawOverlays();
+}
 
+function drawOverlays() {
   if (state === 'title') drawTitle();
   else drawHUD();
 

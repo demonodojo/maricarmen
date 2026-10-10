@@ -14,7 +14,10 @@
   body { display: flex; align-items: center; justify-content: center;
          touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
          -webkit-tap-highlight-color: transparent; }
-  canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+  #screen { position: relative; }
+  canvas { display: block; position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+           image-rendering: pixelated; image-rendering: crisp-edges; }
+  #gl { visibility: hidden; }
 
   button { font-family: monospace; font-weight: bold; color: #fff; cursor: pointer;
            background: rgba(255,255,255,0.14); border: 2px solid rgba(255,255,255,0.45);
@@ -45,7 +48,10 @@
 </style>
 </head>
 <body>
-<canvas id="game" width="320" height="180"></canvas>
+<div id="screen">
+  <canvas id="gl" width="480" height="270"></canvas>
+  <canvas id="game" width="320" height="180"></canvas>
+</div>
 
 <div id="top">
   <button id="btn-music" class="touch-only" aria-label="Música">&#9835;</button>
@@ -69,7 +75,7 @@
   </div>
 </div>
 
-<script src="game.js?v=3"></script>
+<script src="game.js?v=4"></script>
 <script data-goatcounter="https://demonodojo.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>
