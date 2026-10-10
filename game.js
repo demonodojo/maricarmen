@@ -170,15 +170,15 @@ const EP = {
 // ---------------------------------------------------------------- TIPOS, MEJORAS
 const TYPES = {
   cop: { name: 'ANTIDISTURBIO', draw: 'cop', hp: 3, speed: 0.45, range: 17, wind: 32, pts: 100, hitPts: 10,
-         drop: 0.04, shield: true, shoot: true, attacks: ['H'] },
+         drop: 0.02, shield: true, shoot: true, attacks: ['H'] },
   nazi: { name: 'NAZI', draw: 'nazi', hp: 2, speed: 0.75, range: 15, wind: 26, pts: 500, hitPts: 50,
-          drop: 0.35, nazi: true, attacks: ['H', 'L'] },
+          drop: 0.10, nazi: true, attacks: ['H', 'L'] },
   skin: { name: 'CABEZA RAPADA', draw: 'skin', hp: 3, speed: 0.6, range: 15, wind: 28, pts: 300, hitPts: 30,
-          drop: 0.2, nazi: true, bottle: true, attacks: ['H', 'H', 'L'] },
+          drop: 0.06, nazi: true, bottle: true, attacks: ['H', 'H', 'L'] },
   geo: { name: 'GEO', draw: 'geo', hp: 4, speed: 0.55, range: 16, wind: 24, pts: 250, hitPts: 25,
-         drop: 0.1, taser: true, evade: 0.3, attacks: ['H', 'L', 'HL'] },
+         drop: 0.04, taser: true, evade: 0.3, attacks: ['H', 'L', 'HL'] },
   officer: { name: 'OFICIAL NAZI', draw: 'officer', hp: 5, speed: 0.85, range: 16, wind: 22, pts: 1000, hitPts: 80,
-             drop: 0.6, nazi: true, evade: 0.25, attacks: ['HL', 'LH', 'HH', 'L'] },
+             drop: 0.15, nazi: true, evade: 0.25, attacks: ['HL', 'LH', 'HH', 'L'] },
   comisario: { name: 'EL COMISARIO', draw: 'cop', boss: true, hp: 30, speed: 0.4, range: 18, wind: 30, pts: 5000,
                hitPts: 40, shield: true, shieldHigh: true, charge: true, summon: 'cop', attacks: ['H', 'HH'] },
   general: { name: 'EL GENERAL', draw: 'officer', boss: true, hp: 34, speed: 0.55, range: 18, wind: 26, pts: 8000,
@@ -187,10 +187,10 @@ const TYPES = {
 const UNLOCKS = { 3: '¡LLEGAN LOS CABEZAS RAPADAS!', 5: '¡CUIDADO CON LOS GEO!', 7: '¡OFICIALES NAZIS A LA VISTA!' };
 
 const AFFIX = {
-  BLINDADO: { c: '#d0d8e0', hp: 2.5, speed: 0.8 },
-  VELOZ: { c: '#4fe3ff', speed: 1.7, wind: 0.8 },
-  FURIOSO: { c: '#ff4040', wind: 0.55, dmg: 1 },
-  REGENERA: { c: '#7dff7d', hp: 1.5 },
+  BLINDADO: { c: '#d0d8e0', hp: 1.8, speed: 0.8 },
+  VELOZ: { c: '#4fe3ff', speed: 1.45, wind: 0.8 },
+  FURIOSO: { c: '#ff4040', wind: 0.7, dmg: 1 },
+  REGENERA: { c: '#7dff7d', hp: 1.3 },
 };
 
 const RARITY = [
@@ -199,13 +199,13 @@ const RARITY = [
   { name: 'EPICA', c: '#ffb030' },
 ];
 const CARDS = [
-  { id: 'hp', name: 'COCIDO MADRILEÑO', desc: '+2 CORAZONES MAXIMOS Y TE CURA 2', r: 0, max: 4,
-    apply: (s) => { s.maxHp += 2; mari.hp = Math.min(s.maxHp, mari.hp + 2); } },
-  { id: 'fuerza', name: 'ANIS DEL MONO', desc: 'TODOS TUS GOLPES HACEN +25% DE DAÑO', r: 0, max: 5, apply: (s) => { s.dmg += 0.25; } },
-  { id: 'veloz', name: 'ZAPATILLAS NUEVAS', desc: 'ANDAS UN 15% MAS RAPIDO', r: 0, max: 3, apply: (s) => { s.speed += 0.15; } },
-  { id: 'rapida', name: 'CAFE CON LECHE', desc: 'GOLPEAS UN 12% MAS RAPIDO', r: 0, max: 3, apply: (s) => { s.atkSpd += 0.12; } },
-  { id: 'alcance', name: 'ESTIRAMIENTOS', desc: 'TODOS TUS GOLPES LLEGAN 3 PIXELES MAS LEJOS', r: 0, max: 3, apply: (s) => { s.reach += 3; } },
-  { id: 'critico', name: 'MALA UVA', desc: '15% DE PROBABILIDAD DE GOLPE CRITICO X2', r: 0, max: 3, apply: (s) => { s.crit += 0.15; } },
+  { id: 'hp', name: 'COCIDO MADRILEÑO', desc: '+3 CORAZONES MAXIMOS Y TE CURA 3', r: 0, max: 4,
+    apply: (s) => { s.maxHp += 3; mari.hp = Math.min(s.maxHp, mari.hp + 3); } },
+  { id: 'fuerza', name: 'ANIS DEL MONO', desc: 'TODOS TUS GOLPES HACEN +35% DE DAÑO', r: 0, max: 6, apply: (s) => { s.dmg += 0.35; } },
+  { id: 'veloz', name: 'ZAPATILLAS NUEVAS', desc: 'ANDAS UN 20% MAS RAPIDO', r: 0, max: 3, apply: (s) => { s.speed += 0.2; } },
+  { id: 'rapida', name: 'CAFE CON LECHE', desc: 'GOLPEAS UN 18% MAS RAPIDO', r: 0, max: 3, apply: (s) => { s.atkSpd += 0.18; } },
+  { id: 'alcance', name: 'ESTIRAMIENTOS', desc: 'TODOS TUS GOLPES LLEGAN 4 PIXELES MAS LEJOS', r: 0, max: 3, apply: (s) => { s.reach += 4; } },
+  { id: 'critico', name: 'MALA UVA', desc: '18% DE PROBABILIDAD DE GOLPE CRITICO X2', r: 0, max: 3, apply: (s) => { s.crit += 0.18; } },
   { id: 'tortilla', name: 'VECINA GENEROSA', desc: 'LA VECINA TIRA TORTILLAS MAS A MENUDO Y CURAN MAS', r: 0, max: 2,
     apply: (s) => { s.tortillaEvery -= 800; s.tortillaHeal += 1; } },
   { id: 'memoria', name: 'MEMORIA DE ELEFANTE', desc: 'EL COMBO DURA MAS Y SU MULTIPLICADOR SUBE +1', r: 0, max: 2,
@@ -213,7 +213,7 @@ const CARDS = [
   { id: 'espinas', name: 'REBECA DE ESPARTO', desc: 'QUIEN TE PEGA SE LLEVA 1 DE DAÑO', r: 1, max: 2, apply: (s) => { s.thorns += 1; } },
   { id: 'rulos', name: 'ESCUDO DE RULOS', desc: 'LOS RULOS PARAN UN GOLPE CADA 20 SEGUNDOS', r: 1, max: 1,
     apply: (s) => { s.curlers = true; s.curlT = 0; } },
-  { id: 'sopa', name: 'SOPITA DE AJO', desc: '10% DE CURARTE 1 AL TUMBAR A ALGUIEN', r: 1, max: 2, apply: (s) => { s.vamp += 0.1; } },
+  { id: 'sopa', name: 'SOPITA DE AJO', desc: '15% DE CURARTE 1 AL TUMBAR A ALGUIEN', r: 1, max: 2, apply: (s) => { s.vamp += 0.15; } },
   { id: 'malaleche', name: 'MALA LECHE', desc: 'LA BARRA DEL GRITO SE LLENA EL DOBLE DE RAPIDO', r: 1, max: 1, apply: (s) => { s.superRate += 1; } },
   { id: 'doble', name: 'RODILLAS DE TITANIO', desc: 'DOBLE SALTO: SALTA OTRA VEZ EN EL AIRE', r: 1, max: 1 },
   { id: 'pisoton', name: 'PISOTON DE ABUELA', desc: 'ABAJO EN EL AIRE: CAES Y TUMBAS A LOS DE CERCA', r: 1, max: 1 },
@@ -228,7 +228,7 @@ const CARDS = [
   { id: 'grito2', name: 'GRITO DE PORTERA', desc: 'EL GRITO HACE EL DOBLE DE DAÑO Y TE CURA 2', r: 2, max: 1 },
   { id: 'pisoton2', name: 'PISOTON SISMICO', desc: 'EL PISOTON TUMBA A TODA LA CALLE', r: 2, max: 1, req: 'pisoton' },
 ];
-const CARD_ODDS = { level: [70, 25, 5], medal: [30, 50, 20], boss: [0, 35, 65] };
+const CARD_ODDS = { level: [50, 38, 12], medal: [10, 45, 45], boss: [0, 25, 75] };
 
 // ---------------------------------------------------------------- DIBUJO PERSONAJES
 function shadow(x, h, w = 12) {
@@ -1543,7 +1543,7 @@ function hitEnemy(e, A, dir, melee) {
   const hy = A.h === 'high' ? 26 : A.h === 'low' ? 5 : 16;
   sparks(e.x - dir * 3, GROUND - hy * (e.scale || 1));
   shake = Math.max(shake, dmg >= 3 ? 5 : 3); hitstop = Math.max(hitstop, dmg >= 3 ? 5 : 3);
-  if (combo > 0 && combo % 25 === 0) {
+  if (combo > 0 && combo % 50 === 0) {
     popup(mari.x, GROUND - 50, '¡RACHA DE ' + combo + '!', '#ffd23f');
     dropMedal(mari.x, 40);
   }
@@ -1578,7 +1578,7 @@ function killEnemy(e, dir, A) {
     showBanner('¡JEFE DERROTADO!');
     queueChoice('boss');
     dropMedal(e.x, 50);
-  } else if (e.elite || Math.random() < T.drop) dropMedal(e.x);
+  } else if (Math.random() < (e.elite ? 0.35 : T.drop)) dropMedal(e.x);
   if (boss) {
     if (e === boss) { boss = null; levelUp(); }
     return;
@@ -1639,11 +1639,11 @@ function makeEnemy(type, side, elite) {
   const T = TYPES[type];
   const e = {
     type, T, x: side < 0 ? -20 : W + 20, y: 0, vx: 0, vy: 0, dir: -side, side, state: 'walk', t: 0,
-    hp: T.hp * (1 + 0.12 * (level - 1)), speed: T.speed + level * 0.03 + Math.random() * 0.1, range: T.range,
+    hp: T.hp * (1 + 0.08 * (level - 1)), speed: T.speed + level * 0.022 + Math.random() * 0.08, range: T.range,
     alive: true, anim: (Math.random() * 30) | 0, shootCD: (100 + Math.random() * 120) | 0,
     atkH: 'H', seq: 'H', si: 0, hitChecked: false, blockT: 0, kindShot: 'ball', grenade: false,
     scale: T.boss ? 2 : 1, elite: elite || null, flash: 0, regenT: 0,
-    windMul: Math.max(0.45, 1 - level * 0.03), dmg: T.boss ? 2 : level >= 10 ? 2 : 1,
+    windMul: Math.max(0.55, 1 - level * 0.022), dmg: T.boss ? 2 : level >= 12 ? 2 : 1,
   };
   if (T.boss) e.x = side < 0 ? -30 : W + 30;
   if (elite) {
@@ -1670,7 +1670,7 @@ function spawnEnemy() {
   const rc = enemies.filter((e) => e.alive && e.side > 0).length;
   let side = Math.random() < 0.5 ? -1 : 1;
   if (lc - rc >= 2) side = 1; else if (rc - lc >= 2) side = -1;
-  const elite = level >= 2 && Math.random() < Math.min(0.35, 0.03 * level) ? pick(Object.keys(AFFIX)) : null;
+  const elite = level >= 2 && Math.random() < Math.min(0.22, 0.018 * level) ? pick(Object.keys(AFFIX)) : null;
   makeEnemy(pickType(), side, elite);
 }
 
