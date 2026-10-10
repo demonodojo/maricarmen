@@ -678,7 +678,12 @@ function reset() {
 }
 reset();
 
+function track(path, title) {
+  if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path, title, event: true });
+}
+
 function startGame() {
+  track('partida-iniciada', 'Partida iniciada');
   reset();
   state = 'play'; paused = false;
   initAudio(); startMusic(); sfx('start');
@@ -687,6 +692,7 @@ function startGame() {
 
 function endGame() {
   state = 'over'; overT = 0;
+  track('partida-terminada', 'Partida terminada');
   if (score > hi) { hi = score; try { localStorage.setItem('maricarmen_hi', String(hi)); } catch (e) { /* sin almacenamiento */ } }
   AU.playing = false;
   sfx('over');
