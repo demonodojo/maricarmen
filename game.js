@@ -186,8 +186,8 @@ const TYPES = {
              hitPts: 60, nazi: true, grenade: true, summon: 'skin', evade: 0.12, attacks: ['HL', 'LH', 'HLH'] },
   para: { name: 'PARACAIDISTA', draw: 'para', hp: 3, speed: 0.55, range: 15, wind: 26, pts: 400, hitPts: 40,
           drop: 0.08, chute: true, attacks: ['H', 'L'] },
-  heli: { name: 'HELICOPTERO', draw: 'heli', hp: 10, speed: 0.4, range: 70, wind: 20, pts: 1500, hitPts: 40,
-          drop: 0.12, flying: true, flyY: 22, attacks: ['H'] },
+  heli: { name: 'HELICOPTERO', draw: 'heli', hp: 10, speed: 0.7, range: 70, wind: 20, pts: 1500, hitPts: 40,
+          drop: 0, flying: true, flyY: 38, attacks: ['H'] },
   plane: { name: 'AVION', draw: 'plane', hp: 12, speed: 1.7, range: 0, wind: 10, pts: 2000, hitPts: 30,
            drop: 0.15, flying: true, flyY: 46, strafe: true, attacks: ['H'] },
 };
@@ -240,6 +240,7 @@ const CARDS = [
   { id: 'pisoton2', name: 'PISOTON SISMICO', desc: 'EL PISOTON TUMBA A TODA LA CALLE', r: 2, max: 1, req: 'pisoton' },
 ];
 const CARD_ODDS = { level: [50, 38, 12], medal: [10, 45, 45], boss: [0, 25, 75] };
+const MEDAL_LEVELS = new Set([3, 7, 9, 13, 17, 21, 23, 27, 31, 33, 37, 41, 43, 47]);
 
 // ---------------------------------------------------------------- DIBUJO PERSONAJES
 function shadow(x, h, w = 12) {
@@ -1119,26 +1120,26 @@ const HINTS_KB = [
   '! ROJO: AGACHATE   ! AMARILLO: SALTA   ! AZUL: APARTATE',
   'DOBLE TOQUE < O >: PASO LIGERO SIN RECIBIR DAÑO',
   'D: GRITO CUANDO LA BARRA ROJA ESTE LLENA',
-  'NAZIS Y ELITES SUELTAN MEDALLAS CON MEJORAS',
+  'LAS MEDALLAS LLEGAN EN NIVELES FIJOS, HASTA EL 50',
 ];
 const HINTS_PLANE_KB = [
   'ABAJO: A LA CALLE    ARRIBA: AL PORTAL    < > DE LADO',
   'ESPACIO: SALTAR    CONTROL: AGACHARSE',
   'LOS CARRILES SON LIBRES: TU Y ELLOS OS MOVEIS POR TODA LA CALLE',
-  'HELICOPTEROS: PATADA ALTA O ZAPATILLA. AVIONES: EL GRITO',
+  'LOS HELICOPTEROS PASAN POR ENCIMA Y SUELTAN BOMBAS',
 ];
 const HINTS_PLANE_TOUCH = [
   'ABAJO: A LA CALLE    ARRIBA: AL PORTAL',
   'SALTO Y AGACHARSE ESTAN EN LOS BOTONES',
   'LOS CARRILES SON LIBRES: TU Y ELLOS OS MOVEIS POR TODA LA CALLE',
-  'HELICOPTEROS: PATADA ALTA O ZAPATILLA. AVIONES: EL GRITO',
+  'LOS HELICOPTEROS PASAN POR ENCIMA Y SUELTAN BOMBAS',
 ];
 const HINTS_TOUCH = [
   '¡LOS ESCUDOS PARAN PUÑETAZOS Y RODILLAZOS!',
   '! ROJO: AGACHATE   ! AMARILLO: SALTA   ! AZUL: APARTATE',
   'DOBLE TOQUE EN LA CRUCETA: PASO LIGERO',
   'BOTON GRITO CUANDO LA BARRA ROJA ESTE LLENA',
-  'NAZIS Y ELITES SUELTAN MEDALLAS CON MEJORAS',
+  'LAS MEDALLAS LLEGAN EN NIVELES FIJOS, HASTA EL 50',
 ];
 
 // ---------------------------------------------------------------- ESTADO
@@ -1611,10 +1612,7 @@ function hitEnemy(e, A, dir, melee) {
   const hy = A.h === 'high' ? 26 : A.h === 'low' ? 5 : 16;
   sparks(e.x - dir * 3, GROUND - hy * (e.scale || 1));
   shake = Math.max(shake, dmg >= 3 ? 5 : 3); hitstop = Math.max(hitstop, dmg >= 3 ? 5 : 3);
-  if (combo > 0 && combo % 50 === 0) {
-    popup(mari.x, GROUND - 50, '¡RACHA DE ' + combo + '!', '#ffd23f');
-    dropMedal(mari.x, 40);
-  }
+  if (combo > 0 && combo % 50 === 0) popup(mari.x, GROUND - 50, '¡RACHA DE ' + combo + '!', '#ffd23f');
   if (e.hp <= 0) { killEnemy(e, dir, A); return; }
   sfx('hit');
   if (e.T.flying || e.state === 'fall') return;
@@ -1648,8 +1646,7 @@ function killEnemy(e, dir, A) {
     burst(e.x, GROUND - 40, ['#ffd23f', '#ff6040', '#ffffff'], 60, 4);
     showBanner('¡JEFE DERROTADO!');
     queueChoice('boss');
-    dropMedal(e.x, 50, e.z);
-  } else if (Math.random() < (e.elite ? 0.35 : T.drop)) dropMedal(e.x, 18, e.z);
+  }
   if (boss) {
     if (e === boss) { boss = null; levelUp(); }
     return;
@@ -1664,7 +1661,12 @@ function levelUp() {
   level++; levelKills = 0;
   showBanner('NIVEL ' + level);
   sfx('level');
-  queueChoice('level');
+  if (level % 5 !== 0) {
+    if (MEDAL_LEVELS.has(level)) {
+      dropMedal(mari.x, 40, mari.z);
+      showBanner('¡MEDALLA DEL NIVEL ' + level + '!');
+    } else if (level % 2 === 0) queueChoice('level');
+  }
   if (UNLOCKS[level]) showBanner(UNLOCKS[level]);
   if (level === 23) showBanner(touchMode ? 'BOTONES SALTO Y AGACHARSE' : 'ESPACIO SALTA, CONTROL AGACHA');
   if (level % 5 === 0) spawnBoss();
@@ -1811,7 +1813,7 @@ function throwArc(e) {
 }
 
 function dropBomb(e) {
-  const tf = 46, g = 0.16, tx = mari.x + rand(-10, 10), tz = (mari.z || 0) + rand(-6, 6);
+  const tf = 46, g = 0.16, tx = mari.x + rand(-22, 22), tz = (mari.z || 0) + rand(-14, 14);
   projs.push({ kind: 'grenade', arc: true, x: e.x, z: e.z || 0, h: e.y, vx: (tx - e.x) / tf,
                vz: (tz - (e.z || 0)) / tf, vy: (0.5 * g * tf * tf - e.y) / tf, g, t: 0, friendly: false, hits: new Set() });
   sfx('shoot');
@@ -1922,10 +1924,13 @@ function updEnemy(e) {
         if (--e.bombT <= 0 && e.x > 20 && e.x < W - 20) { dropBomb(e); e.bombT = 70; }
         if (e.x < -70 || e.x > W + 70) { e.alive = false; e.remove = true; }
       } else {
-        e.x += clamp(dx, -1, 1) * e.speed;
-        e.z += clamp(dz, -1, 1) * e.speed * 0.75;
-        e.dir = dx >= 0 ? 1 : -1;
-        if (e.shootCD <= 0 && dist < 110) { dropBomb(e); e.shootCD = 140; }
+        if (e.patrolDir == null) { e.patrolDir = e.dir || 1; e.patrolZ = clamp(e.z || 28, 16, Z_MAX - 12); }
+        e.x += e.patrolDir * Math.max(1.1, e.speed * 1.8);
+        if (e.x < 28 || e.x > W - 28) e.patrolDir *= -1;
+        e.z += clamp(e.patrolZ - e.z, -0.35, 0.35);
+        e.y = T.flyY;
+        e.dir = e.patrolDir;
+        if (e.shootCD <= 0 && e.x > 20 && e.x < W - 20) { dropBomb(e); e.shootCD = 95; }
       }
       break;
     case 'evade':
